@@ -1,0 +1,93 @@
+# ========== 主配置文件 ==========
+# 作用：存放所有环境通用的配置，不包含任何敏感信息
+# 位置：src/main/resources/application.yml
+
+spring:
+  profiles:
+    # 默认激活 dev 环境，启动时可通过 --spring.profiles.active=prod 覆盖
+    active: dev
+
+  # Servlet 配置（所有环境通用）
+  servlet:
+    multipart:
+      max-file-size: 500MB     # 单个文件最大500MB（视频限制）
+      max-request-size: 500MB  # 整个请求最大500MB
+
+  # 定时任务配置（通用）
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: scheduled-task-
+
+  # Jackson 配置（通用）
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# MyBatis 配置（通用）
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 媒体文件配置（注意：这里包含了 FFmpeg 本地路径，需要根据环境区分）
+media:
+  ffmpeg:
+    path: ${FFMPEG_PATH:}      # 从环境变量读取，不同环境路径不同
+  image:
+    max-size: 31457280         # 30MB
+    max-batch-count: 10
+  video:
+    max-size: 536870912        # 500MB
+    max-batch-count: 1
+
+# 上传配置（统一配置存储类型，敏感信息由环境覆盖）
+upload:
+  storage:
+    type: ${STORAGE_TYPE:oss}  # 存储类型：oss/local/minio，从环境变量读取
+    local:
+      path: /uploads
+      url-prefix: /uploads
+  chat:
+    max-size: 10485760  # 聊天文件最大10MB
+    allowed-types: jpg,png,gif,jpeg,mp4,avi,mov,pdf,doc,docx,txt,mp3,wav
+  # 每日上传限制（针对媒体文件）
+  daily-limit:
+    normal: 20                # 普通用户每日20个
+    vip-monthly: 50           # 月度VIP每日50个
+    vip-quarterly: 100        # 季度VIP每日100个
+    vip-yearly: 200           # 年度VIP每日200个
+    vip-lifetime: -1          # 终身VIP无限
+
+# 频率限制配置（社交功能）
+rate:
+  limit:
+    message: 30               # 每分钟最多30条消息
+    friend-apply: 5           # 每小时最多5个好友申请
+    follow: 50                # 每小时最多关注50人
+    file-upload: 20           # 每小时最多上传20个文件
+
+# 缓存配置
+cache:
+  ttl:
+    user-friends: 30          # 好友列表缓存30分钟
+    user-following: 30        # 关注列表缓存30分钟
+    recent-chats: 5           # 最近聊天缓存5分钟
+    chat-history: 10          # 聊天历史缓存10分钟
+    message-status: 7         # 消息状态缓存7天
+# 应用配置
+app:
+  # VIP价格配置
+  vip:
+    monthly-price: 24.00
+    quarterly-price: 64.00
+    yearly-price: 252.00
+    lifetime-price: 666.00
+
+  # 聊天配置
+  chat:
+    withdraw-timeout: 120     # 消息撤回时限（秒）
+    max-history-days: 365     # 聊天记录保存天数

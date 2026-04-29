@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.VipMapper">
+
+    <!-- 结果映射配置 -->
+    <resultMap id="vipConfigMap" type="com.itheima.pojo.VipConfig">
+        <id property="id" column="id"/>
+        <result property="vipType" column="vip_type"/>
+        <result property="vipName" column="vip_name"/>
+        <result property="originalPrice" column="original_price"/>
+        <result property="currentPrice" column="current_price"/>
+        <result property="durationDays" column="duration_days"/>
+        <result property="maxDailyUpload" column="max_daily_upload"/>
+        <result property="adFree" column="ad_free"/>
+        <result property="exclusiveBadge" column="exclusive_badge"/>
+        <result property="priorityReview" column="priority_review"/>
+        <result property="iconUrl" column="icon_url"/>
+        <result property="description" column="description"/>
+        <result property="highlightFeatures" column="highlight_features"
+                typeHandler="com.itheima.handler.JsonTypeHandler"/>
+        <result property="isActive" column="is_active"/>
+        <result property="discountTag" column="discount_tag"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <resultMap id="vipOrderMap" type="com.itheima.pojo.VipOrder">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="vipType" column="vip_type"/>
+        <result property="amount" column="amount"/>
+        <result property="payType" column="pay_type"/>
+        <result property="status" column="status"/>
+        <result property="payTime" column="pay_time"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="transactionId" column="transaction_id"/>
+        <result property="paymentData" column="payment_data"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="username" column="username"/>
+        <result property="phone" column="phone"/>
+        <result property="vipName" column="vip_name"/>
+    </resultMap>
+
+
+    <resultMap id="vipRecordDTOMap" type="com.itheima.dto.VipRecordDTO">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="vipType" column="vip_type"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="actionType" column="action_type"/>
+        <result property="oldExpireTime" column="old_expire_time"/>
+        <result property="newExpireTime" column="new_expire_time"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="findOrdersByPage" resultMap="vipOrderMap">
+        SELECT vo.*, u.username, u.phone, vc.vip_name
+        FROM vip_order vo
+        LEFT JOIN user u ON vo.user_id = u.id
+        LEFT JOIN vip_config vc ON vo.vip_type = vc.vip_type
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND vo.order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="username != null and username != ''">
+                AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="vipType != null and vipType != ''">
+                 AND u.vip_type LIKE CONCAT('%', #{vipType}, '%')
+            </if>
+            <if test="startTime != null">
+                AND vo.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND vo.create_time &lt;= #{endTime}
+            </if>
+        </where>
+        ORDER BY vo.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="findUserVipRecords" resultMap="vipRecordDTOMap">
+        SELECT * FROM user_vip_record
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+            LIMIT #{limit}
+    </select>
+
+
+    <!-- VIP配置相关 -->
+    <select id="findAllActiveVipConfigs" resultMap="vipConfigMap">
+        SELECT * FROM vip_config
+        WHERE is_active = 1
+        ORDER BY vip_type
+    </select>
+
+    <select id="findVipConfigByType" resultMap="vipConfigMap">
+        SELECT * FROM vip_config
+        WHERE vip_type = #{vipType} AND is_active = 1
+    </select>
+
+    <!-- VIP订单相关 -->
+    <insert id="createVipOrder" parameterType="com.itheima.pojo.VipOrder">
+        INSERT INTO vip_order (order_no, user_id, vip_type, amount, pay_type, status, create_time)
+        VALUES (#{orderNo}, #{userId}, #{vipType}, #{amount}, #{payType}, #{status}, #{createTime})
+    </insert>
+
+    <select id="findOrderByOrderNo" resultMap="vipOrderMap">
+        SELECT * FROM vip_order WHERE order_no = #{orderNo}
+    </select>
+
+    <update id="updateOrderStatus">
+        UPDATE vip_order
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="payTime != null">pay_time = #{payTime},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="transactionId != null">transaction_id = #{transactionId},</if>
+            <if test="paymentData != null">payment_data = #{paymentData},</if>
+            update_time = NOW()
+        </set>
+        WHERE order_no = #{orderNo}
+    </update>
+
+    <select id="findUserOrders" resultMap="vipOrderMap">
+        SELECT * FROM vip_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="findCurrentUserVip" resultMap="vipConfigMap">
+        SELECT vc.* FROM vip_order vo
+                             JOIN vip_config vc ON vo.vip_type = vc.vip_type
+        WHERE vo.user_id = #{userId} AND vo.status = 1
+          AND vo.expire_time > NOW()
+        ORDER BY vo.expire_time DESC LIMIT 1
+    </select>
+
+    <select id="countUnpaidOrders" resultType="int">
+        SELECT COUNT(*) FROM vip_order
+        WHERE user_id = #{userId} AND status = 0
+          AND create_time > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+    </select>
+
+    <select id="findExpiringOrders" resultMap="vipOrderMap">
+        SELECT vo.* FROM vip_order vo
+        WHERE vo.status = 1
+          AND vo.expire_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
+    </select>
+
+    <select id="countOrders" resultType="int">
+        SELECT COUNT(*) FROM vip_order vo
+        LEFT JOIN user u ON vo.user_id = u.id
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND vo.order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="username != null and username != ''">
+                AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="vipType != null">
+                AND vo.vip_type = #{vipType}
+            </if>
+            <if test="status != null">
+                AND vo.status = #{status}
+            </if>
+            <if test="startTime != null">
+                AND vo.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND vo.create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- VIP变更记录相关 -->
+    <insert id="insertVipRecord">
+        INSERT INTO user_vip_record (user_id, vip_type, order_no, action_type,
+                                     old_expire_time, new_expire_time, remark)
+        VALUES (#{userId}, #{vipType}, #{orderNo}, #{actionType},
+                #{oldExpireTime}, #{newExpireTime}, #{remark})
+    </insert>
+
+</mapper>

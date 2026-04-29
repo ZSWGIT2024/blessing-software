@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.FriendRelationMapper">
+
+    <resultMap id="FriendRelationResultMap" type="com.itheima.pojo.FriendRelation">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="friendId" column="friend_id"/>
+        <result property="groupName" column="group_name"/>
+        <result property="remark" column="remark"/>
+        <result property="relationType" column="relation_type"/>
+        <result property="isStarred" column="is_starred"/>
+        <result property="isBlocked" column="is_blocked"/>
+        <result property="becomeFriendTime" column="become_friend_time"/>
+        <result property="lastInteractionTime" column="last_interaction_time"/>
+        <result property="interactionCount" column="interaction_count"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 建立好友关系 -->
+    <insert id="insert" parameterType="com.itheima.pojo.FriendRelation" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO friend_relation (user_id, friend_id, group_name, remark)
+        VALUES (#{userId}, #{friendId}, #{groupName}, #{remark})
+    </insert>
+
+    <!-- 删除好友关系 -->
+    <delete id="delete">
+        DELETE FROM friend_relation
+        WHERE user_id = #{userId} AND friend_id = #{friendId}
+    </delete>
+
+    <!-- 更新好友信息 -->
+    <update id="update" parameterType="com.itheima.pojo.FriendRelation">
+        UPDATE friend_relation
+        <set>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="isStarred != null">is_starred = #{isStarred},</if>
+            <if test="isBlocked != null">is_blocked = #{isBlocked},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 增加互动次数 -->
+    <update id="increaseInteraction">
+        UPDATE friend_relation
+        SET interaction_count = interaction_count + 1,
+            last_interaction_time = NOW(),
+            update_time = NOW()
+        WHERE user_id = #{userId} AND friend_id = #{friendId}
+    </update>
+
+    <!-- 查询是否是好友 -->
+    <select id="isFriend" resultType="int">
+        SELECT COUNT(*) FROM friend_relation
+        WHERE user_id = #{userId} AND friend_id = #{friendId}
+    </select>
+
+    <!-- 查询好友详情 -->
+    <select id="selectFriendDetail" resultMap="FriendRelationResultMap">
+        SELECT fr.* FROM friend_relation fr
+        WHERE fr.user_id = #{userId} AND fr.friend_id = #{friendId}
+    </select>
+
+    <!-- 查询好友列表 -->
+    <select id="selectFriendList" resultMap="FriendRelationResultMap">
+        SELECT fr.* FROM friend_relation fr
+        WHERE fr.user_id = #{userId}
+        <if test="groupName != null">AND fr.group_name = #{groupName}</if>
+        <if test="isStarred != null">AND fr.is_starred = #{isStarred}</if>
+        <if test="keyword != null">
+            AND EXISTS (
+            SELECT 1 FROM user u
+            WHERE u.id = fr.friend_id
+            AND (u.nickname LIKE CONCAT('%', #{keyword}, '%') OR fr.remark LIKE CONCAT('%', #{keyword}, '%'))
+            )
+        </if>
+        ORDER BY
+        <choose>
+            <when test="sortType == 'interaction'">fr.interaction_count DESC, </when>
+            <when test="sortType == 'time'">fr.become_friend_time DESC, </when>
+        </choose>
+        fr.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 获取好友数量 -->
+    <select id="countFriends" resultType="int">
+        SELECT COUNT(*) FROM friend_relation fr
+        WHERE fr.user_id = #{userId}
+        <if test="groupName != null">AND fr.group_name = #{groupName}</if>
+        <if test="isStarred != null">AND fr.is_starred = #{isStarred}</if>
+    </select>
+
+    <!-- 批量移动好友到新分组 -->
+    <update id="batchMoveToGroup">
+        UPDATE friend_relation
+        SET group_name = #{newGroupName}
+        WHERE user_id = #{userId} AND friend_id IN
+        <foreach collection="friendIds" item="friendId" open="(" separator="," close=")">
+            #{friendId}
+        </foreach>
+    </update>
+
+    <!-- 获取共同好友 -->
+    <select id="selectCommonFriends" resultMap="FriendRelationResultMap">
+        SELECT fr.* FROM friend_relation fr
+                             INNER JOIN friend_relation fr2 ON fr.friend_id = fr2.friend_id
+        WHERE fr.user_id = #{userId1} AND fr2.user_id = #{userId2}
+        ORDER BY fr.interaction_count DESC
+            LIMIT #{limit}
+    </select>
+
+</mapper>

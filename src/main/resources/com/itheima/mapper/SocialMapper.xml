@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.SocialMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="chatMessageWithFile" type="com.itheima.pojo.ChatMessage">
+        <id property="id" column="id"/>
+        <result property="messageId" column="message_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="receiverId" column="receiver_id"/>
+        <result property="chatType" column="chat_type"/>
+        <result property="contentType" column="content_type"/>
+        <result property="content" column="content"/>
+        <result property="fileId" column="file_id"/>
+        <result property="extraData" column="extra_data"/>
+        <result property="originalContent" column="original_content"/>
+        <result property="status" column="status"/>
+        <result property="isFiltered" column="is_filtered"/>
+        <result property="filteredWords" column="filtered_words"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+
+        <!-- 关联的文件信息 -->
+        <association property="chatFile" javaType="com.itheima.pojo.ChatFile">
+            <id property="id" column="file_id"/>
+            <result property="fileName" column="file_name"/>
+            <result property="filePath" column="file_path"/>
+            <result property="fileType" column="file_type"/>
+            <result property="fileSize" column="file_size"/>
+            <result property="thumbnailPath" column="thumbnail_path"/>
+        </association>
+    </resultMap>
+    <!-- 聊天消息相关操作 -->
+
+    <!-- 插入聊天消息 -->
+    <insert id="insertChatMessage" parameterType="com.itheima.pojo.ChatMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_message
+        (message_id, sender_id, receiver_id, chat_type, content_type,
+         content, file_id, extra_data, original_content, status,
+         is_filtered, filtered_words, create_time, update_time)
+        VALUES
+        (#{messageId}, #{senderId}, #{receiverId}, #{chatType}, #{contentType},
+         #{content}, #{fileId}, #{extraData}, #{originalContent}, #{status},
+         #{isFiltered}, #{filteredWords}, NOW(), NOW())
+    </insert>
+
+    <!-- 查询聊天历史（包含文件信息） -->
+
+    <select id="selectChatMessageByMessageId" parameterType="String" resultType="com.itheima.pojo.ChatMessage">
+        SELECT * FROM chat_message
+        WHERE message_id = #{messageId} AND is_deleted = 0
+    </select>
+
+    <update id="updateMessageStatus">
+        UPDATE chat_message
+        SET status = #{status}, update_time = NOW()
+        WHERE message_id = #{messageId}
+    </update>
+
+    <update id="markMessagesAsRead">
+        UPDATE chat_message
+        SET is_read = 1, read_time = NOW(), status = 'read', update_time = NOW()
+        WHERE receiver_id = #{userId}
+          AND sender_id = #{senderId}
+          AND is_read = 0
+          AND is_deleted = 0
+    </update>
+
+    <update id="withdrawMessage">
+        UPDATE chat_message
+        SET status = 'withdrawn',
+            withdraw_time = NOW(),
+            withdraw_reason = #{reason},
+            content = '【消息已撤回】',
+            update_time = NOW()
+        WHERE message_id = #{messageId}
+          AND sender_id = #{senderId}
+          AND TIMESTAMPDIFF(MINUTE, create_time, NOW()) &lt;= 2
+          AND status != 'withdrawn'
+    </update>
+
+    <select id="selectUnreadCount" parameterType="Integer" resultType="Integer">
+        SELECT COUNT(*) FROM chat_message
+        WHERE receiver_id = #{userId}
+          AND is_read = 0
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectUnreadCountWithUser" parameterType="map" resultType="Integer">
+        SELECT COUNT(*) FROM chat_message
+        WHERE receiver_id = #{userId}
+          AND sender_id = #{senderId}
+          AND is_read = 0
+          AND is_deleted = 0
+    </select>
+
+    <update id="deleteHistoryFromChat">
+        UPDATE chat_message
+        SET is_deleted = 1, update_time = NOW()
+        WHERE (sender_id = #{userId} AND receiver_id = #{friendId})
+    </update>
+
+    <delete id="deleteHistoryFromChatFile">
+        DELETE FROM chat_file
+        WHERE (uploader_id = #{userId} AND receiver_id = #{friendId})
+    </delete>
+
+    <insert id="insertMessageStatusHistory" parameterType="com.itheima.pojo.ChatMessageStatusHistory">
+        INSERT INTO chat_message_status_history
+            (message_id, status, reason, operator_id, create_time)
+        VALUES
+            (#{messageId}, #{status}, #{reason}, #{operatorId}, NOW())
+    </insert>
+
+    <!-- 其他现有方法保持不变 -->
+
+</mapper>

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.FollowMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.itheima.pojo.Follow">
+        <id property="id" column="id"/>
+        <result property="followerId" column="follower_id"/>
+        <result property="followingId" column="following_id"/>
+        <result property="relationType" column="relation_type"/>
+        <result property="remark" column="remark"/>
+        <result property="muteNotify" column="mute_notify"/>
+        <result property="isHidden" column="is_hidden"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!-- 添加关注 -->
+    <insert id="insert" parameterType="com.itheima.pojo.Follow" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_follow
+        (follower_id, following_id, relation_type, remark, mute_notify, is_hidden)
+        VALUES
+        (#{followerId}, #{followingId}, #{relationType}, #{remark}, #{muteNotify}, #{isHidden})
+    </insert>
+
+    <!-- 取消关注 -->
+    <delete id="delete">
+        DELETE FROM user_follow
+        WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </delete>
+
+    <!-- 更新关注信息 -->
+    <update id="update" parameterType="com.itheima.pojo.Follow">
+        UPDATE user_follow
+        <set>
+            <if test="relationType != null">
+                relation_type = #{relationType},
+            </if>
+            <if test="remark != null">
+                remark = #{remark},
+            </if>
+            <if test="muteNotify != null">
+                mute_notify = #{muteNotify},
+            </if>
+            <if test="isHidden != null">
+                is_hidden = #{isHidden},
+            </if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询是否关注 -->
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM user_follow
+        WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </select>
+
+    <!-- 获取关注关系详情 -->
+    <select id="selectByBothIds" resultMap="BaseResultMap">
+        SELECT * FROM user_follow
+        WHERE follower_id = #{followerId} AND following_id = #{followingId}
+    </select>
+
+    <!-- 查询用户的关注列表（分页） -->
+    <select id="selectFollowingList" resultMap="BaseResultMap">
+        SELECT * FROM user_follow
+        WHERE follower_id = #{userId}
+        <if test="relationType != null">
+            AND relation_type = #{relationType}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 查询用户的粉丝列表（分页） -->
+    <select id="selectFollowerList" resultMap="BaseResultMap">
+        SELECT * FROM user_follow
+        WHERE following_id = #{userId}
+        <if test="relationType != null">
+            AND relation_type = #{relationType}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 获取关注数量 -->
+    <select id="countFollowing" resultType="int">
+        SELECT COUNT(*) FROM user_follow WHERE follower_id = #{userId}
+    </select>
+
+    <!-- 获取粉丝数量 -->
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(*) FROM user_follow WHERE following_id = #{userId}
+    </select>
+
+    <!-- 获取互关列表（双方都关注了对方） -->
+    <select id="selectMutualFollowList" resultMap="BaseResultMap">
+        SELECT f1.* FROM user_follow f1
+                             INNER JOIN user_follow f2 ON f1.follower_id = f2.following_id AND f1.following_id = f2.follower_id
+        WHERE f1.follower_id = #{userId}
+        ORDER BY f1.create_time DESC
+            LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 批量查询关注状态 -->
+    <select id="batchSelectFollowStatus" resultMap="BaseResultMap">
+        SELECT * FROM user_follow
+        WHERE follower_id = #{userId} AND following_id IN
+        <foreach collection="targetUserIds" item="targetId" open="(" separator="," close=")">
+            #{targetId}
+        </foreach>
+    </select>
+
+</mapper>

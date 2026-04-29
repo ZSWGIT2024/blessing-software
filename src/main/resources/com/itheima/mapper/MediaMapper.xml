@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.MediaMapper">
+
+    <!-- 第一个查询 -->
+    <select id="countByCondition" resultType="java.lang.Long"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT COUNT(*) FROM user_media
+        <where>
+            status = #{status}
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="mediaType != null and mediaType != ''">
+                AND media_type = #{mediaType}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="isPublic != null and isPublic != ''">
+                AND is_public = #{isPublic}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 第二个查询 -->
+    <select id="selectByCondition" resultType="com.itheima.pojo.UserMedia"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT * FROM user_media
+        <where>
+            status = #{status}
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="mediaType != null and mediaType != ''">
+                AND media_type = #{mediaType}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="isPublic != null and isPublic != ''">
+                AND is_public = #{isPublic}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="orderBy == 'like_count'">like_count</when>
+            <when test="orderBy == 'view_count'">view_count</when>
+            <when test="orderBy == 'upload_time'">upload_time</when>
+            <otherwise>upload_time</otherwise>
+        </choose>
+        <choose>
+            <when test="order == 'ASC'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        <!-- 分页：直接在XML中计算offset -->
+        <if test="pageSize != null and pageSize > 0">
+            LIMIT #{pageSize}
+            OFFSET ${(pageNum - 1) * pageSize}
+        </if>
+    </select>
+
+
+    <!-- 查询指定用户媒体类型和状态的总记录数 -->
+    <select id="countByUserAndStatus" resultType="java.lang.Long"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT COUNT(*) FROM user_media
+        <where>
+            user_id = #{userId}
+            AND status = #{status}
+            AND media_type = #{mediaType}
+
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 查询指定用户媒体类型和状态的数据列表 -->
+    <select id="selectByUserAndStatus" resultType="com.itheima.pojo.UserMedia"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT * FROM user_media
+        <where>
+            user_id = #{userId}
+            AND status = #{status}
+            AND media_type = #{mediaType}
+
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="orderBy == 'like_count'">like_count</when>
+            <when test="orderBy == 'view_count'">view_count</when>
+            <when test="orderBy == 'upload_time'">upload_time</when>
+            <otherwise>upload_time</otherwise>
+        </choose>
+        <choose>
+            <when test="order == 'ASC'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        <!-- 分页 -->
+        <if test="pageSize != null and pageSize > 0">
+            LIMIT #{pageSize}
+            OFFSET ${(pageNum - 1) * pageSize}
+        </if>
+    </select>
+
+<!--    &lt;!&ndash; 查询用户所有状态的作品总数 &ndash;&gt;-->
+    <select id="countAllStatusByUser" resultType="java.lang.Long"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT COUNT(*) FROM user_media
+        <where>
+            user_id = #{userId} AND media_type = #{mediaType}
+
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+<!--    &lt;!&ndash; 查询用户所有状态的作品列表 &ndash;&gt;-->
+    <select id="selectAllStatusByUser" resultType="com.itheima.pojo.UserMedia"
+            parameterType="com.itheima.dto.MediaQueryDTO">
+        SELECT * FROM user_media
+        <where>
+            user_id = #{userId} AND media_type = #{mediaType}
+
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                filename LIKE CONCAT('%', #{keyword}, '%')
+                OR category LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND upload_time >= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND upload_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="orderBy == 'like_count'">like_count</when>
+            <when test="orderBy == 'view_count'">view_count</when>
+            <when test="orderBy == 'upload_time'">upload_time</when>
+            <otherwise>upload_time</otherwise>
+        </choose>
+        <choose>
+            <when test="order == 'ASC'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        <!-- 分页 -->
+        <if test="pageSize != null and pageSize > 0">
+            LIMIT #{pageSize}
+            OFFSET ${(pageNum - 1) * pageSize}
+        </if>
+    </select>
+
+    <update id="batchUpdateStatus">
+        UPDATE user_media
+        SET
+        status = #{status},
+        tags =
+        <choose>
+            <when test="tags != null and tags != ''">
+                #{tags}
+            </when>
+            <otherwise>
+                tags  <!-- 保持原值 -->
+            </otherwise>
+        </choose>,
+        update_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        <!-- 只有当状态不同时才更新 -->
+        AND (
+        status != #{status}
+        OR
+        (
+        #{tags} IS NOT NULL
+        AND #{tags} != ''
+        AND (tags != #{tags} OR tags IS NULL)
+        )
+        )
+    </update>
+
+    <!-- 其他SQL语句... -->
+
+</mapper>  <!-- 这是唯一的根标签 -->

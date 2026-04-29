@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.itheima.mapper.AvatarFrameMapper">
+    <!-- 完整的结果映射 -->
+    <resultMap id="avatarFrameMap" type="com.itheima.pojo.AvatarFrame">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="url" column="url"/>
+        <result property="previewUrl" column="preview_url"/>
+        <result property="requiredLevel" column="required_level"/>
+        <result property="requiredVipType" column="required_vip_type"/>
+        <result property="requiredDays" column="required_days"/>
+        <!-- 其他所有字段都需要映射 -->
+    </resultMap>
+
+    <!-- 必须与接口方法一一对应 -->
+    <select id="selectById" resultMap="avatarFrameMap">
+        SELECT * FROM avatar_frame WHERE id = #{id}
+    </select>
+
+    <select id="selectCurrentFrameByUserId" resultMap="avatarFrameMap">
+        SELECT af.* FROM avatar_frame af
+                             JOIN user_avatar_frame uaf ON af.id = uaf.frame_id
+        WHERE uaf.user_id = #{userId} AND uaf.is_using = 1
+    </select>
+
+    <select id="selectAvailableFramesByUser" resultMap="avatarFrameMap">
+        SELECT * FROM avatar_frame
+        WHERE
+        <!-- 等级要求：当前等级 >= 所需等级 -->
+        #{level} >= required_level
+        OR
+        <!-- VIP要求：当前VIP等级 >= 所需VIP等级 -->
+        #{vipType} >= required_vip_type
+        OR
+        <!-- 登录天数要求：当前天数 >= 所需天数 -->
+        (#{loginDays} >= required_days AND required_days IS NOT NULL)
+        ORDER BY
+        required_level DESC,  -- 等级高的优先
+        required_vip_type DESC,  -- VIP等级高的优先
+        required_days DESC  -- 天数要求高的优先
+    </select>
+
+    <!-- 其他SQL语句 -->
+    <insert id="insert" parameterType="com.itheima.pojo.AvatarFrame">
+        INSERT INTO avatar_frame(name, url, preview_url, required_level, ...)
+        VALUES(#{name}, #{url}, #{previewUrl}, #{requiredLevel}, ...)
+    </insert>
+
+    <update id="update" parameterType="com.itheima.pojo.AvatarFrame">
+        UPDATE avatar_frame SET name = #{name}, url = #{url}, preview_url = #{previewUrl}, ...
+        WHERE id = #{id}
+    </update>
+
+</mapper>

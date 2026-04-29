@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.itheima.mapper.UserAvatarFrameMapper">
+    <!-- 完整的结果映射 -->
+    <resultMap id="userFrameMap" type="com.itheima.pojo.UserAvatarFrame">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="frameId" column="frame_id"/>
+        <result property="isUsing" column="is_using"/>
+        <result property="unlockTime" column="unlock_time"/>
+
+        <!-- 关联的头像框信息 -->
+        <association property="frameInfo" javaType="com.itheima.pojo.AvatarFrame">
+            <id property="id" column="af_id"/>
+            <result property="name" column="af_name"/>
+            <result property="url" column="af_url"/>
+            <result property="previewUrl" column="af_preview_url"/>
+            <!-- 其他需要的字段 -->
+        </association>
+    </resultMap>
+
+    <!-- 修正的查询SQL（避免列名冲突） -->
+    <select id="selectUserFramesWithDetail" resultMap="userFrameMap">
+        SELECT
+            uaf.*,
+            af.id as af_id,
+            af.name as af_name,
+            af.url as af_url,
+            af.preview_url as af_preview_url
+        FROM user_avatar_frame uaf
+                 LEFT JOIN avatar_frame af ON uaf.frame_id = af.id
+        WHERE uaf.user_id = #{userId}
+    </select>
+
+    <!-- 更新语句修正 -->
+    <update id="updateUsingStatus">
+        UPDATE user_avatar_frame
+        SET is_using = CASE
+                           WHEN frame_id = #{frameId} THEN 1
+                           ELSE 0
+            END
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 添加其他必要的SQL -->
+    <select id="exists" resultType="int">
+        SELECT COUNT(*) FROM user_avatar_frame
+        WHERE user_id = #{userId} AND frame_id = #{frameId}
+    </select>
+
+    <insert id="insert" parameterType="com.itheima.pojo.UserAvatarFrame">
+        INSERT INTO user_avatar_frame(user_id, frame_id, is_using, unlock_time)
+        VALUES(#{userId}, #{frameId}, #{isUsing}, #{unlockTime})
+    </insert>
+</mapper>
