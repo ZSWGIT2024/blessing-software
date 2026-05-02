@@ -81,4 +81,9 @@ public interface UserService {
 
     void updateLastActiveTime(Integer friendId);
 
+    /**
+     * 根据用户ID更新密码
+     */
+    void updatePasswordById(Integer userId, String newPassword);
+
 }

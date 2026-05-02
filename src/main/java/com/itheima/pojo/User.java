@@ -19,6 +19,7 @@ public class User {
     private String username;
 
     @JsonIgnore
+    @Pattern(regexp = "^[a-zA-Z0-9]{5,16}$")
     private String password;
 
     @NotNull
@@ -125,6 +126,9 @@ public class User {
     private String lastLoginIp;                // 最后登录IP
     private String lastLoginLocation;          // 最后登录地
     private String registerSource;             // 注册来源：web, app, wechat等
+    private Long tokenVersion;                 // Token版本号（用于强制登出）
+    private Integer loginFailCount;            // 登录失败次数
+    private LocalDateTime lockedUntil;         // 锁定截止时间
 
     // === 时间戳 ===
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

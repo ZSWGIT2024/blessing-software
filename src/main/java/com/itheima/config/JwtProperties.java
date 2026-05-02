@@ -20,10 +20,17 @@ public class JwtProperties {
 
     /**
      * JWT过期时间（毫秒）
-     * 默认7天 = 7 * 24 * 60 * 60 * 1000 = 604800000
+     *  30分钟（毫秒）
      */
-    @Value("${security.jwt.expire-time}")
-    private long expireTime;
+    @Value("${security.jwt.access-token-expiration}")
+    private long accessTokenExpiration;
+
+    /**
+     * JWT刷新过期时间（毫秒）
+     *  7天（毫秒）
+     */
+    @Value("${security.jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
 
     /**
      * token在请求头中的名称
@@ -37,10 +44,4 @@ public class JwtProperties {
     @Value("${security.jwt.token-prefix}")
     private String tokenPrefix;
 
-    /**
-     * 获取过期时间（毫秒）
-     */
-    public Date getExpireDate() {
-        return new Date(System.currentTimeMillis() + expireTime * 24 * 60 * 60 * 1000);
-    }
 }

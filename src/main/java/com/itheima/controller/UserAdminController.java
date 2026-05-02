@@ -3,6 +3,7 @@ package com.itheima.controller;
 import com.itheima.common.UserConstant;
 import com.itheima.pojo.Result;
 import com.itheima.pojo.User;
+import com.itheima.service.LoginSecurityService;
 import com.itheima.service.UserService;
 import com.itheima.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Max;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class UserAdminController {
 
     private final UserService userService;
+    private final LoginSecurityService loginSecurityService;
 
     /**
      * 检查当前用户是否是管理员
@@ -262,6 +264,25 @@ public class UserAdminController {
         } else {
             return Result.error("未查询到相关用户，请重新输入");
         }
+    }
+
+    /**
+     * 解锁账户
+     */
+    @PostMapping("/unlock/{id}")
+    public Result<String> unlockUser(@PathVariable("id") Integer id) {
+        if (!checkAdminPermission()) {
+            return Result.error("权限不足");
+        }
+
+        User user = userService.findUserById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        loginSecurityService.unlockAccount(user.getPhone());
+        log.info("管理员解锁用户账户: 用户ID={}, 手机号={}", id, user.getPhone());
+        return Result.success("账户已解锁");
     }
 
     /**

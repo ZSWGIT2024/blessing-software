@@ -1,4 +1,4 @@
-// com.itheima.utils.JwtUtil.java
+
 package com.itheima.utils;
 
 import com.auth0.jwt.JWT;
@@ -17,8 +17,6 @@ import java.util.Map;
  * JWT工具类
  * 负责JWT令牌的生成、解析和验证
  *
- * @author your-team
- * @date 2024-01-01
  */
 @Slf4j
 @Component
@@ -36,7 +34,7 @@ public class JwtUtil {
         this.jwtProperties = jwtProperties;
         log.info("JwtUtil初始化完成，秘钥长度：{}，过期时间：{}ms",
                 jwtProperties.getSecret().length(),
-                jwtProperties.getExpireTime());
+                jwtProperties.getAccessTokenExpiration());
     }
 
     /**
@@ -47,8 +45,8 @@ public class JwtUtil {
      */
     public String generateToken(Map<String, Object> claims) {
         try {
-            // 配置的是天数，转换为毫秒
-            long expireMillis = jwtProperties.getExpireTime() * 24 * 60 * 60 * 1000L;
+            // 配置的是毫秒数
+            long expireMillis = jwtProperties.getAccessTokenExpiration();
             String token = JWT.create()
                     .withClaim("claims", claims)
                     .withExpiresAt(new Date(System.currentTimeMillis() + expireMillis))
@@ -72,9 +70,12 @@ public class JwtUtil {
      */
     public Map<String, Object> parseToken(String token) throws JWTVerificationException, TokenExpiredException {
         try {
+            // 移除Bearer前缀（兼容带/不带前缀的token）
+            String jwt = removeBearerPrefix(token);
+
             Map<String, Object> claims = JWT.require(Algorithm.HMAC256(jwtProperties.getSecret()))
                     .build()
-                    .verify(token)
+                    .verify(jwt)
                     .getClaim("claims")
                     .asMap();
 

@@ -1,0 +1,39 @@
+<!-- server/views/index.ejs -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="header">
+    <h1><%= title %></h1>
+    <p>当前服务版本：v1.0.0 | 最后更新：<%= new Date().toLocaleDateString() %></p>
+  </div>
+
+  <div class="endpoint-list">
+    <% endpoints.forEach(endpoint => { %>
+      <div class="endpoint-card">
+        <div>
+          <span class="method-tag method-<%= endpoint.method.toLowerCase() %>">
+            <%= endpoint.method %>
+          </span>
+          <span class="endpoint-path"><%= endpoint.path %></span>
+        </div>
+        <p class="endpoint-desc"><%= endpoint.desc %></p>
+        
+        <% if (endpoint.example) { %>
+          <pre class="response-example"><code><%= JSON.stringify(endpoint.example, null, 2) %></code></pre>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+
+  <div class="footer">
+    <p>© 2025 API 服务 | 使用 Express + EJS 构建</p>
+  </div>
+</body>
+</html>

@@ -1,13 +1,17 @@
 package com.itheima.controller;
 
 
+import com.itheima.annotation.Log;
+import com.itheima.annotation.LogType;
+import com.itheima.annotation.Monitor;
 import com.itheima.common.UserConstant;
 import com.itheima.dto.UserSimpleDTO;
+import com.itheima.pojo.LoginRecord;
 import com.itheima.pojo.Result;
 import com.itheima.pojo.User;
-import com.itheima.service.UserService;
-import com.itheima.service.UserStatisticsService;
+import com.itheima.service.*;
 import com.itheima.utils.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +23,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -42,12 +47,19 @@ public class UserController {
 
     private final RedisTemplate redisTemplate;
 
-    private final JwtUtil jwtUtil;  // 注入JwtUtil
+    private final JwtUtil jwtUtil;
+
+    private final JwtTokenService jwtTokenService;
+
+    private final LoginSecurityService loginSecurityService;
+
+    private final LoginRecordService loginRecordService;
+
+    private final AsyncTaskService asyncTaskService;
 
     private final IpLocationUtil ipLocationUtil;
 
-
-    private final AdvancedIpLocationUtil advancedIpLocationUtil;  // 使用更精确的IP定位
+    private final AdvancedIpLocationUtil advancedIpLocationUtil;
 
     /**
      * 用户注册
@@ -134,72 +146,96 @@ public class UserController {
     }
 
     /**
-     * 用户登录
+     * 用户登录（优化版：BCrypt密码验证 + 双Token + 登录安全）
      */
     @PostMapping(value = "/login", produces = "application/json")
+    @Log(module = "用户认证", operation = "用户登录", type = LogType.LOGIN)
+    @Monitor(threshold = 2000)
     public Result<Map<String, Object>> login(
             @Pattern(regexp = "^1[3-9]\\d{9}$")
             @RequestParam("phone") String phone,
             @Pattern(regexp = "^[a-zA-Z0-9_.]{5,16}$")
-            @RequestParam("password") String password) {
+            @RequestParam("password") String password,
+            HttpServletRequest request) {
 
-        //记录登录所用时间秒单位
-        long start = System.currentTimeMillis();
-        System.out.println("登录开始时间：" + start);
+        String clientIp = RequestUtils.getClientIp();
+
         try {
+            // 1. 获取设备信息
+            String userAgent = request.getHeader("User-Agent");
+            String browser = RequestUtils.getBrowser(userAgent);
+            String os = RequestUtils.getOS(userAgent);
+
+            // 2. 检查登录尝试限制
+            LoginSecurityService.LoginCheckResult checkResult =
+                    loginSecurityService.checkLoginAttempt(phone, clientIp);
+
+            if (!checkResult.isAllowed()) {
+                // 记录失败登录
+                try {
+                    LoginRecord failRecord = buildLoginRecord(null, null, phone, "password",
+                            clientIp, null, userAgent, browser, os, "fail", checkResult.getMessage());
+                    loginRecordService.save(failRecord);
+                } catch (Exception ex) {
+                    log.debug("记录登录失败忽略", ex);
+                }
+                return Result.error(checkResult.getMessage());
+            }
+
+            // 3. 查找用户
             User loginUser = userService.findByPhone(phone);
             if (loginUser == null) {
+                loginSecurityService.recordLoginFailure(phone, clientIp);
+                recordFailedLogin(null, null, phone, "password", clientIp, null, userAgent, browser, os, "用户不存在");
                 return Result.error("用户不存在");
             }
 
-            // 检查用户状态
+            // 4. 检查用户状态
             if (!UserConstant.STATUS_ACTIVE.equals(loginUser.getStatus())) {
+                recordFailedLogin(loginUser.getId(), loginUser.getUsername(), phone, "password", clientIp,
+                        null, userAgent, browser, os, "账号已被封禁");
                 return Result.error("账号已被封禁");
             }
 
-            // 验证密码
-            if (!Md5Util.md5Encrypt(password).equals(loginUser.getPassword())) {
-                return Result.error("密码错误");
-            }
+            // 5. BCrypt密码验证（含MD5→BCrypt迁移）
+            String storedPassword = loginUser.getPassword();
+            boolean passwordValid = false;
 
-            //在这里用时
-            long cost1 = System.currentTimeMillis();
-            System.out.println("登录结束时间：" + cost1);
-            System.out.println("登录用时：" + (cost1 - start) / 1000 + "秒");
-
-            // 获取客户端IP
-            String clientIp = RequestUtils.getClientIp();
-
-            // 使用高级IP定位获取详细位置信息
-            Map<String, String> locationInfo = advancedIpLocationUtil.getDetailedLocation(clientIp);
-            String country = locationInfo.getOrDefault("country", "未知");
-            String region = locationInfo.getOrDefault("region", "未知");
-            String city = locationInfo.getOrDefault("city", "未知");
-            String isp = locationInfo.getOrDefault("isp", "未知");
-
-            // 格式化位置信息
-            String location;
-            if ("中国".equals(country)) {
-                if (region.equals(city) || city.contains("市辖区")) {
-                    location = region;  // 直辖市只显示城市
-                } else {
-                    location = region + "·" + city;
-                }
-            } else if (!"未知".equals(country)) {
-                location = country;
+            if (BCryptUtil.isBCryptPassword(storedPassword)) {
+                // 新密码：使用BCrypt验证
+                passwordValid = BCryptUtil.matches(password, storedPassword);
             } else {
-                location = ipLocationUtil.getLocation(clientIp);
+                // 旧密码：使用MD5验证，成功后自动迁移到BCrypt
+                String md5Hash = Md5Util.md5Encrypt(password);
+                if (md5Hash.equals(storedPassword)) {
+                    passwordValid = true;
+                    // 异步迁移密码，不阻塞登录响应
+                    asyncTaskService.migratePassword(loginUser.getId(), password);
+                    log.info("密码将从MD5异步迁移到BCrypt：userId={}", loginUser.getId());
+                }
             }
 
-            // 更新登录信息（包含IP和位置）
+            if (!passwordValid) {
+                loginSecurityService.recordLoginFailure(phone, clientIp);
+                recordFailedLogin(loginUser.getId(), loginUser.getUsername(), phone, "password", clientIp,
+                        null, userAgent, browser, os, "密码错误");
+
+                int failedAttempts = loginSecurityService.getFailedAttempts(phone);
+                int remainingAttempts = 5 - failedAttempts;
+                return Result.error("密码错误，还剩" + Math.max(0, remainingAttempts) + "次机会");
+            }
+
+            // 6. 记录登录成功，清除失败记录
+            loginSecurityService.recordLoginSuccess(phone, clientIp);
+
+            // 7. 获取位置信息
+            String location = getFormattedLocation(clientIp);
+
+            // 8. 更新登录信息
             updateLoginInfo(loginUser, clientIp, location);
+            loginUser.setIsOnline(UserConstant.ONLINE);
 
-            //在这里用时
-            long cost2 = System.currentTimeMillis();
-            System.out.println("登录结束时间2：" + cost2);
-            System.out.println("登录2用时：" + (cost2 - start) / 1000 + "秒");
-
-            // 生成JWT token
+            // 9. 生成双Token（Access + Refresh）
             Map<String, Object> claims = new HashMap<>();
             claims.put("id", loginUser.getId());
             claims.put("phone", loginUser.getPhone());
@@ -208,81 +244,37 @@ public class UserController {
             claims.put("userType", loginUser.getUserType());
             claims.put("status", loginUser.getStatus());
             claims.put("avatar", loginUser.getAvatar());
-            claims.put("clientIp", clientIp);
-            claims.put("lastLoginLocation", location);
-            claims.put("loginDays", loginUser.getLoginDays());
-            claims.put("totalLoginDays", loginUser.getTotalLoginDays());
 
-            String token = jwtUtil.generateToken(claims);
+            // 添加Token版本号
+            Long tokenVersion = jwtTokenService.getTokenVersion(loginUser.getId());
+            claims.put("version", tokenVersion.intValue());
 
-            // 存储token到Redis（有效期7天）
-            redisTemplate.opsForValue().set(token, token, 7, TimeUnit.DAYS);
+            String accessToken = jwtTokenService.generateAccessToken(claims);
+            String refreshToken = jwtTokenService.generateRefreshToken(claims);
 
-            log.info("用户登录成功: userId={}, phone={}, loginIp={}, location={}, country={}, region={}, city={}, isp={}",
-                    loginUser.getId(), phone, clientIp, location, country, region, city, isp);
+            // 10. 记录登录成功
+            recordSuccessLogin(loginUser.getId(), loginUser.getUsername(), phone, "password", clientIp,
+                    location, userAgent, browser, os);
 
-            //在这里用时
-            long cost3 = System.currentTimeMillis();
-            System.out.println("登录结束时间3：" + cost3);
-            System.out.println("登录用时3：" + (cost3 - start) / 1000 + "秒");
-            //设置用户在线状态
-            loginUser.setIsOnline(UserConstant.ONLINE);
-
-            // 登录成功后记录统计事件
-            Map<String, Object> loginData = new HashMap<>();
-            loginData.put("phone", phone.substring(0, 3) + "****" + phone.substring(7, 11));
-            loginData.put("loginIp", clientIp);
-            loginData.put("loginLocation", location);
-            loginData.put("country", country);
-            loginData.put("region", region);
-            loginData.put("city", city);
-            loginData.put("isp", isp);
-            loginData.put("loginType", "password");
-
-            //在这里用时
-            long cost5 = System.currentTimeMillis();
-            System.out.println("登录结束时间4：" + cost5);
-            System.out.println("登录用时4：" + (cost5 - start) / 1000 + "秒");
-
-            userStatisticsService.recordLoginEvent(loginUser.getId(), loginData);
-
-            log.info("用户登录成功并记录统计: userId={}, phone={}", loginUser.getId(), phone);
-
-            //在这里用时
-            long cost4 = System.currentTimeMillis();
-            System.out.println("登录结束时间5：" + cost4);
-            System.out.println("登录用时5：" + (cost4 - start) / 1000 + "秒");
-            // 返回完整的用户信息
-            Map<String, Object> data = new HashMap<>();
-            data.put("token", token);
-            data.put("userId", loginUser.getId());
-            data.put("phone", loginUser.getPhone().substring(0, 3) + "****" + loginUser.getPhone().substring(7, 11));
-            data.put("username", loginUser.getUsername());
-            data.put("nickname", loginUser.getNickname());
-            data.put("avatar", loginUser.getAvatar());
-            data.put("userType", loginUser.getUserType());
-            data.put("status", loginUser.getStatus());
-            data.put("location", location);
-            data.put("locationDetail", locationInfo);  // 返回详细的位置信息
-            data.put("lastLoginTime", loginUser.getLastLoginTime());
-            data.put("lastLoginIp", clientIp);
-            data.put("loginDays", loginUser.getLoginDays());  // 连续登录天数
-            data.put("totalLoginDays", loginUser.getTotalLoginDays());  // 累计登录天数
-            data.put("level", loginUser.getLevel());  // 用户等级
-            data.put("exp", loginUser.getExp());  // 经验值
-            data.put("isOnline", loginUser.getIsOnline());
-
-            // 如果是VIP，返回VIP信息
-            if (loginUser.isVip()) {
-                data.put("vipType", loginUser.getVipType());
-                data.put("vipExpireTime", loginUser.getVipExpireTime());
-                data.put("vipRemainingDays", loginUser.getVipRemainingDays());
+            // 11. 记录登录事件
+            try {
+                Map<String, Object> loginData = new HashMap<>();
+                loginData.put("phone", phone.substring(0, 3) + "****" + phone.substring(7, 11));
+                loginData.put("loginIp", clientIp);
+                loginData.put("loginLocation", location);
+                loginData.put("loginType", "password");
+                userStatisticsService.recordLoginEvent(loginUser.getId(), loginData);
+            } catch (Exception e) {
+                log.debug("记录登录统计事件失败", e);
             }
 
-            //在这里用时
-            long cost6 = System.currentTimeMillis();
-            System.out.println("登录结束时间6：" + cost6);
-            System.out.println("登录6用时：" + (cost6 - start) / 1000 + "秒");
+            log.info("用户登录成功: userId={}, phone={}, loginIp={}, location={}",
+                    loginUser.getId(), phone, clientIp, location);
+
+            // 12. 构建返回数据
+            Map<String, Object> data = buildLoginResponseData(loginUser, accessToken,
+                    refreshToken, clientIp, location);
+
             return Result.success(data);
 
         } catch (Exception e) {
@@ -292,13 +284,15 @@ public class UserController {
     }
 
     /**
-     * 验证码登录
+     * 验证码登录（优化版：双Token + 登录记录）
      */
     @PostMapping(value = "/loginByCode", produces = "application/json")
+    @Log(module = "用户认证", operation = "验证码登录", type = LogType.LOGIN)
     public Result<Map<String, Object>> loginByCode(
             @Pattern(regexp = "^1[3-9]\\d{9}$")
             @RequestParam("phone") String phone,
-            @RequestParam("code") String code) {
+            @RequestParam("code") String code,
+            HttpServletRequest request) {
 
         try {
             // 1. 验证验证码
@@ -319,8 +313,6 @@ public class UserController {
             // 2. 查找用户
             User loginUser = userService.findByPhone(phone);
             if (loginUser == null) {
-                // 如果用户不存在，可以自动注册（可选）
-                // return autoRegisterByPhone(phone);
                 return Result.error("用户不存在");
             }
 
@@ -329,34 +321,21 @@ public class UserController {
                 return Result.error("账号已被封禁");
             }
 
-            // 获取客户端IP
+            // 4. 获取客户端信息
             String clientIp = RequestUtils.getClientIp();
+            String userAgent = request.getHeader("User-Agent");
+            String browser = RequestUtils.getBrowser(userAgent);
+            String os = RequestUtils.getOS(userAgent);
+            String location = getFormattedLocation(clientIp);
 
-            // 使用高级IP定位获取详细位置信息
-            Map<String, String> locationInfo = advancedIpLocationUtil.getDetailedLocation(clientIp);
-            String country = locationInfo.getOrDefault("country", "未知");
-            String region = locationInfo.getOrDefault("region", "未知");
-            String city = locationInfo.getOrDefault("city", "未知");
-            String isp = locationInfo.getOrDefault("isp", "未知");
-
-            // 格式化位置信息
-            String location;
-            if ("中国".equals(country)) {
-                if (region.equals(city) || city.contains("市辖区")) {
-                    location = region;  // 直辖市只显示城市
-                } else {
-                    location = region + "·" + city;
-                }
-            } else if (!"未知".equals(country)) {
-                location = country;
-            } else {
-                location = ipLocationUtil.getLocation(clientIp);
-            }
-
-            // 更新登录信息（包含IP和位置）
+            // 5. 更新登录信息
             updateLoginInfo(loginUser, clientIp, location);
+            loginUser.setIsOnline(UserConstant.ONLINE);
 
-            // 生成JWT token
+            // 6. 记录登录成功
+            loginSecurityService.recordLoginSuccess(phone, clientIp);
+
+            // 7. 生成双Token
             Map<String, Object> claims = new HashMap<>();
             claims.put("id", loginUser.getId());
             claims.put("phone", loginUser.getPhone());
@@ -365,63 +344,31 @@ public class UserController {
             claims.put("userType", loginUser.getUserType());
             claims.put("status", loginUser.getStatus());
             claims.put("avatar", loginUser.getAvatar());
-            claims.put("clientIp", clientIp);
-            claims.put("lastLoginLocation", location);
-            claims.put("loginDays", loginUser.getLoginDays());
-            claims.put("totalLoginDays", loginUser.getTotalLoginDays());
 
-            String token = jwtUtil.generateToken(claims);
+            String accessToken = jwtTokenService.generateAccessToken(claims);
+            String refreshToken = jwtTokenService.generateRefreshToken(claims);
 
-            // 存储token到Redis（有效期7天）
-            redisTemplate.opsForValue().set(token, token, 7, TimeUnit.DAYS);
+            // 8. 记录登录记录
+            recordSuccessLogin(loginUser.getId(), loginUser.getUsername(), phone, "code", clientIp, location,
+                    userAgent, browser, os);
 
-            log.info("用户登录成功: userId={}, phone={}, loginIp={}, location={}, country={}, region={}, city={}, isp={}",
-                    loginUser.getId(), phone, clientIp, location, country, region, city, isp);
-
-            //设置用户在线状态
-            loginUser.setIsOnline(UserConstant.ONLINE);
-
-            // 登录成功后记录统计事件
-            Map<String, Object> loginData = new HashMap<>();
-            loginData.put("phone", phone.substring(0, 3) + "****" + phone.substring(7, 11));
-            loginData.put("loginIp", clientIp);
-            loginData.put("loginLocation", location);
-            loginData.put("country", country);
-            loginData.put("region", region);
-            loginData.put("city", city);
-            loginData.put("isp", isp);
-            loginData.put("loginType", "code");
-
-            userStatisticsService.recordLoginEvent(loginUser.getId(), loginData);
-
-            log.info("验证码登录成功并记录统计: userId={}, phone={}", loginUser.getId(), phone);
-
-            // 返回完整的用户信息
-            Map<String, Object> data = new HashMap<>();
-            data.put("token", token);
-            data.put("userId", loginUser.getId());
-            data.put("phone", loginUser.getPhone().substring(0, 3) + "****" + loginUser.getPhone().substring(7, 11));
-            data.put("username", loginUser.getUsername());
-            data.put("nickname", loginUser.getNickname());
-            data.put("avatar", loginUser.getAvatar());
-            data.put("userType", loginUser.getUserType());
-            data.put("status", loginUser.getStatus());
-            data.put("location", location);
-            data.put("locationDetail", locationInfo);  // 返回详细的位置信息
-            data.put("lastLoginTime", loginUser.getLastLoginTime());
-            data.put("lastLoginIp", clientIp);
-            data.put("loginDays", loginUser.getLoginDays());  // 连续登录天数
-            data.put("totalLoginDays", loginUser.getTotalLoginDays());  // 累计登录天数
-            data.put("level", loginUser.getLevel());  // 用户等级
-            data.put("exp", loginUser.getExp());  // 经验值
-            data.put("isOnline", loginUser.getIsOnline());
-
-            // 如果是VIP，返回VIP信息
-            if (loginUser.isVip()) {
-                data.put("vipType", loginUser.getVipType());
-                data.put("vipExpireTime", loginUser.getVipExpireTime());
-                data.put("vipRemainingDays", loginUser.getVipRemainingDays());
+            // 9. 记录统计事件
+            try {
+                Map<String, Object> loginData = new HashMap<>();
+                loginData.put("phone", phone.substring(0, 3) + "****" + phone.substring(7, 11));
+                loginData.put("loginIp", clientIp);
+                loginData.put("loginLocation", location);
+                loginData.put("loginType", "code");
+                userStatisticsService.recordLoginEvent(loginUser.getId(), loginData);
+            } catch (Exception e) {
+                log.debug("记录登录统计事件失败", e);
             }
+
+            log.info("验证码登录成功: userId={}, phone={}, loginIp={}", loginUser.getId(), phone, clientIp);
+
+            // 10. 构建返回数据
+            Map<String, Object> data = buildLoginResponseData(loginUser, accessToken,
+                    refreshToken, clientIp, location);
 
             return Result.success(data);
 
@@ -561,11 +508,11 @@ public class UserController {
         if (lastLoginDate == null || !lastLoginDate.equals(today)) {
             user.setTotalLoginDays(user.getTotalLoginDays() + 1);
 
-            // 给予每日登录经验奖励
-            userService.addExperience(user.getId(), UserConstant.ExpAction.DAILY_LOGIN,
-                    "每日登录奖励，连续登录" + user.getLoginDays() + "天");
+            // 异步给予每日登录经验奖励
+            asyncTaskService.addDailyLoginExp(user.getId(), user.getLoginDays());
 
-            log.info("用户每日登录奖励: userId={}, loginDays={}, totalLoginDays={}", user.getId(), user.getLoginDays(), user.getTotalLoginDays());
+            log.info("用户每日登录奖励已提交: userId={}, loginDays={}, totalLoginDays={}",
+                    user.getId(), user.getLoginDays(), user.getTotalLoginDays());
         }
 
         // 保存到数据库
@@ -657,8 +604,8 @@ public class UserController {
         }
 
         User user = userService.findByPhone(phone);
-        //判断新密码和旧密码是否相同
-        if (Md5Util.verify(newPwd, user.getPassword())) {
+        //判断新密码和旧密码是否相同（BCrypt验证）
+        if (BCryptUtil.matches(newPwd, user.getPassword())) {
             return Result.error("新密码不能和旧密码相同");
         }
         //判断两次密码是否一致
@@ -667,11 +614,201 @@ public class UserController {
         }
         //2.调用service完成密码更新
         userService.updatePwd(newPwd);
-        //当用户密码更新后需要删除redis中的token
-        ValueOperations operations = redisTemplate.opsForValue();
-        operations.getOperations().delete(token);
+        //当用户密码更新后，将旧token加入黑名单，并撤销Refresh Token
+        Integer userId = (Integer) claims.get("id");
+        jwtTokenService.addToBlacklist(token);
+        jwtTokenService.incrementTokenVersion(userId);
+        jwtTokenService.revokeRefreshToken(userId);
         return Result.success();
     }
 
+    /**
+     * 刷新Access Token
+     */
+    @PostMapping("/refreshToken")
+    public Result<Map<String, Object>> refreshToken(
+            @RequestHeader("X-Refresh-Token") String refreshToken) {
+
+        try {
+            // 使用JwtTokenService刷新Access Token
+            String newAccessToken = jwtTokenService.refreshAccessToken(refreshToken);
+            if (newAccessToken == null) {
+                return Result.error("Refresh Token无效或已过期");
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("accessToken", newAccessToken);
+            data.put("tokenType", "Bearer");
+
+            log.info("Access Token刷新成功");
+            return Result.success(data);
+
+        } catch (Exception e) {
+            log.error("刷新Token失败", e);
+            return Result.error("刷新Token失败");
+        }
+    }
+
+    /**
+     * 用户登出
+     */
+    @PostMapping("/logout")
+    @Log(module = "用户认证", operation = "用户登出", type = LogType.LOGOUT)
+    public Result<Void> logout(@RequestHeader("Authorization") String token) {
+
+        try {
+            // 将当前token加入黑名单
+            jwtTokenService.addToBlacklist(token);
+
+            // 撤销Refresh Token
+            Map<String, Object> claims = ThreadLocalUtil.get();
+            if (claims != null) {
+                Integer userId = (Integer) claims.get("id");
+                if (userId != null) {
+                    jwtTokenService.revokeRefreshToken(userId);
+
+                    // 设置用户离线状态
+                    User user = userService.findUserById(userId);
+                    if (user != null) {
+                        user.setIsOnline(UserConstant.OFFLINE);
+                        userService.updateLoginInfo(user);
+                    }
+                    //记录用户登出记录
+                    LoginRecord loginRecord = loginRecordService.getLatestRecord(userId);
+                    if (loginRecord != null) {
+                        LocalDateTime now = LocalDateTime.now();
+                        LocalDateTime loginTime = loginRecord.getLoginTime();
+                        Duration duration = Duration.between(loginTime, now);
+                        long minutes = duration.toMinutes();
+                        loginRecord.setLogoutTime(now);
+                        loginRecord.setOnlineDuration(minutes);
+                    }
+                }
+            }
+
+            log.info("用户登出成功");
+            return Result.success();
+
+        } catch (Exception e) {
+            log.error("登出失败", e);
+            return Result.error("登出失败");
+        }
+    }
+
+    // ==================== 辅助方法 ====================
+
+    /**
+     * 获取格式化位置信息
+     */
+    private String getFormattedLocation(String clientIp) {
+        try {
+            Map<String, String> locationInfo = advancedIpLocationUtil.getDetailedLocation(clientIp);
+            String country = locationInfo.getOrDefault("country", "未知");
+            String region = locationInfo.getOrDefault("region", "未知");
+            String city = locationInfo.getOrDefault("city", "未知");
+
+            if ("中国".equals(country)) {
+                if (region.equals(city) || (city != null && city.contains("市辖区"))) {
+                    return region;
+                }
+                return region + "·" + city;
+            } else if (!"未知".equals(country)) {
+                return country;
+            }
+        } catch (Exception e) {
+            log.debug("获取位置信息失败", e);
+        }
+        return ipLocationUtil.getLocation(clientIp);
+    }
+
+    /**
+     * 构建登录记录
+     */
+    private LoginRecord buildLoginRecord(Integer userId, String username, String phone, String loginType,
+                                         String loginIp, String loginLocation,
+                                         String userAgent, String browser, String os,
+                                         String status, String failReason) {
+        LoginRecord record = new LoginRecord();
+        record.setUserId(userId);
+        record.setUsername(username);
+        record.setPhone(phone);
+        record.setLoginType(loginType);
+        record.setLoginIp(loginIp);
+        record.setLoginLocation(loginLocation);
+        record.setDeviceInfo(userAgent);
+        record.setBrowser(browser);
+        record.setOs(os);
+        record.setStatus(status);
+        record.setFailReason(failReason);
+        record.setLoginTime(LocalDateTime.now());
+        return record;
+    }
+
+    /**
+     * 记录失败登录
+     */
+    private void recordFailedLogin(Integer userId, String username, String phone, String loginType,
+                                    String loginIp, String loginLocation,
+                                    String userAgent, String browser, String os,
+                                    String failReason) {
+        try {
+            LoginRecord record = buildLoginRecord(userId, username, phone, loginType, loginIp,
+                    loginLocation, userAgent, browser, os, "fail", failReason);
+            loginRecordService.save(record);
+        } catch (Exception e) {
+            log.debug("记录登录失败日志忽略", e);
+        }
+    }
+
+    /**
+     * 记录成功登录
+     */
+    private void recordSuccessLogin(Integer userId,String username, String phone, String loginType,
+                                     String loginIp, String loginLocation,
+                                     String userAgent, String browser, String os) {
+        try {
+            LoginRecord record = buildLoginRecord(userId, username, phone, loginType, loginIp,
+                    loginLocation, userAgent, browser, os, "success", null);
+            loginRecordService.save(record);
+        } catch (Exception e) {
+            log.debug("记录登录成功日志忽略", e);
+        }
+    }
+
+    /**
+     * 构建登录响应数据
+     */
+    private Map<String, Object> buildLoginResponseData(User loginUser, String accessToken,
+                                                        String refreshToken, String clientIp,
+                                                        String location) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("accessToken", accessToken);
+        data.put("refreshToken", refreshToken);
+        data.put("tokenType", "Bearer");
+        data.put("accessTokenExpireIn", 1800); // 30分钟
+        data.put("userId", loginUser.getId());
+        data.put("phone", loginUser.getPhone().substring(0, 3) + "****" + loginUser.getPhone().substring(7, 11));
+        data.put("username", loginUser.getUsername());
+        data.put("nickname", loginUser.getNickname());
+        data.put("avatar", loginUser.getAvatar());
+        data.put("userType", loginUser.getUserType());
+        data.put("status", loginUser.getStatus());
+        data.put("location", location);
+        data.put("lastLoginTime", loginUser.getLastLoginTime());
+        data.put("lastLoginIp", clientIp);
+        data.put("loginDays", loginUser.getLoginDays());
+        data.put("totalLoginDays", loginUser.getTotalLoginDays());
+        data.put("level", loginUser.getLevel());
+        data.put("exp", loginUser.getExp());
+        data.put("isOnline", loginUser.getIsOnline());
+
+        if (loginUser.isVip()) {
+            data.put("vipType", loginUser.getVipType());
+            data.put("vipExpireTime", loginUser.getVipExpireTime());
+            data.put("vipRemainingDays", loginUser.getVipRemainingDays());
+        }
+
+        return data;
+    }
 
 }
