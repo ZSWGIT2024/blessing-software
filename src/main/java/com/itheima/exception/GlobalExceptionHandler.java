@@ -19,13 +19,20 @@ public class GlobalExceptionHandler {
         return Result.error(e.getMessage());
     }
 
-    // 2. 处理数据库异常
+    // 2. 处理权限异常
+    @ExceptionHandler(PermissionDeniedException.class)
+    public Result handlePermissionDeniedException(PermissionDeniedException e) {
+        log.warn("权限不足: {}", e.getMessage());
+        return Result.error(e.getMessage());
+    }
+
+    // 3. 处理数据库异常
     @ExceptionHandler(DataAccessException.class)
     public Result handleDataAccessException(DataAccessException e) {
         return Result.error("数据库操作失败");
     }
 
-    // 3. 处理参数校验异常
+    // 4. 处理参数校验异常
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result handleValidationException(MethodArgumentNotValidException e) {
         String errorMsg = e.getBindingResult().getFieldErrors().stream()
@@ -34,10 +41,10 @@ public class GlobalExceptionHandler {
         return Result.error("参数错误: " + errorMsg);
     }
 
-    // 4. 兜底处理其他异常
+    // 5. 兜底处理其他异常
     @ExceptionHandler(Exception.class)
     public Result handleException(Exception e) {
-        log.error("服务异常: ", e);  // 使用日志框架记录
+        log.error("服务异常: ", e);
         return Result.error("系统繁忙，请稍后重试");
     }
 }

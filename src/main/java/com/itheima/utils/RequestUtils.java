@@ -171,4 +171,35 @@ public class RequestUtils {
         HttpServletRequest request = getRequest();
         return request != null ? request.getMethod() : null;
     }
+
+    /**
+     * 从User-Agent中解析浏览器名称
+     */
+    public static String getBrowser(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return "Unknown";
+        }
+        if (userAgent.contains("Edg")) return "Edge";
+        if (userAgent.contains("Chrome")) return "Chrome";
+        if (userAgent.contains("Firefox")) return "Firefox";
+        if (userAgent.contains("Safari") && !userAgent.contains("Chrome")) return "Safari";
+        if (userAgent.contains("OPR") || userAgent.contains("Opera")) return "Opera";
+        if (userAgent.contains("MSIE") || userAgent.contains("Trident")) return "IE";
+        return "Unknown";
+    }
+
+    /**
+     * 从User-Agent中解析操作系统
+     */
+    public static String getOS(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return "Unknown";
+        }
+        if (userAgent.contains("Windows")) return "Windows";
+        if (userAgent.contains("Mac")) return "MacOS";
+        if (userAgent.contains("Linux")) return "Linux";
+        if (userAgent.contains("Android")) return "Android";
+        if (userAgent.contains("iPhone") || userAgent.contains("iPad")) return "iOS";
+        return "Unknown";
+    }
 }

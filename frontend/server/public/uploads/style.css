@@ -1,0 +1,146 @@
+/* server/public/style.css */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --text-color: #2b2d42;
+    --light-bg: #f8f9fa;
+    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 基础样式 */
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--light-bg);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  /* 头部样式 */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 3px solid var(--primary-color);
+  }
+  
+  .header h1 {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+  }
+  
+  .header p {
+    font-size: 1.1rem;
+    color: #6c757d;
+  }
+  
+  /* 接口卡片样式 */
+  .endpoint-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .endpoint-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-left: 4px solid var(--primary-color);
+  }
+  
+  .endpoint-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 请求方法标签 */
+  .method-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.75rem;
+  }
+  
+  .method-get { background: #48c78e; color: white; }
+  .method-post { background: #4895ef; color: white; }
+  .method-put { background: #f7b731; color: white; }
+  .method-delete { background: #f14668; color: white; }
+  
+  /* 路径和描述 */
+  .endpoint-path {
+    font-family: 'Fira Code', monospace;
+    font-size: 1rem;
+    color: var(--secondary-color);
+    word-break: break-all;
+  }
+  
+  .endpoint-desc {
+    margin-top: 0.75rem;
+    color: #495057;
+  }
+  
+  /* 响应状态示例 */
+  .response-example {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f1f3f5;
+    border-radius: 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    position: relative;
+  }
+  
+  .response-example::before {
+    content: '示例响应';
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background: white;
+    padding: 0 5px;
+    font-size: 0.75rem;
+    color: #6c757d;
+  }
+  
+  /* 页脚样式 */
+  .footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+  
+  /* 暗黑模式适配 */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text-color: #e9ecef;
+      --light-bg: #212529;
+    }
+    
+    body {
+      background: #121212;
+    }
+    
+    .endpoint-card {
+      background: #2b2d42;
+      color: #e9ecef;
+    }
+    
+    .endpoint-desc {
+      color: #adb5bd;
+    }
+    
+    .response-example {
+      background: #343a40;
+    }
+  }

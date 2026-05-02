@@ -7,7 +7,7 @@ import com.itheima.pojo.Result;
 import com.itheima.pojo.User;
 import com.itheima.service.ExpService;
 import com.itheima.service.UserService;
-import com.itheima.utils.Md5Util;
+import com.itheima.utils.BCryptUtil;
 import com.itheima.utils.ThreadLocalUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +46,7 @@ public class UserServiceImpl implements UserService {
         user.setNickname(username); // 初始昵称同用户名
         user.setAvatar(defaultAvataUrl);
         user.setEmail(phone + "@temp.com"); // 临时邮箱
-        user.setPassword(Md5Util.md5Encrypt(password));
+        user.setPassword(BCryptUtil.encode(password));
         user.setUserType(0); // 普通用户
         user.setStatus("active"); // 正常状态
         user.setLevel(1);
@@ -92,7 +92,7 @@ public class UserServiceImpl implements UserService {
     public void updatePwd(String newPwd) {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Integer id = (Integer) claims.get("id");
-        String newPwdX = Md5Util.md5Encrypt(newPwd);
+        String newPwdX = BCryptUtil.encode(newPwd);
         userMapper.updatePwd(id, newPwdX);
     }
 
@@ -323,5 +323,12 @@ public class UserServiceImpl implements UserService {
     public void updateLastActiveTime(Integer userId) {
         LocalDateTime now = LocalDateTime.now();
         userMapper.updateLastActiveTime(userId, now);
+    }
+
+    @Override
+    public void updatePasswordById(Integer userId, String newPassword) {
+        String hashedPassword = BCryptUtil.encode(newPassword);
+        userMapper.updatePwd(userId, hashedPassword);
+        log.info("用户密码已更新：userId={}", userId);
     }
 }

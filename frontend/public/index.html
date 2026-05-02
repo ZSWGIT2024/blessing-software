@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的Vue3艺术字项目</title>
+  <!-- 在项目的index.html或main.js中引入图标库 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- 引入Google字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&family=Kosugi+Maru&display=swap" rel="stylesheet">
+  <!-- 预加载CSS -->
+  <link rel="preload" href="<%= BASE_URL %>css/app.css" as="style">
+  <img src="<%= BASE_URL %>images/sakura.png">
+</head>
+<body>
+  <div class="player-wrapper">
+    <div class="music-player" :class="{ collapsed: isPlayerCollapsed }">
+      <!-- 播放器内容 -->
+    </div>
+  </div>
+  <div id="app"></div>
+  <!-- 内置脚本会自动注入 -->
+</body>
+</html>
