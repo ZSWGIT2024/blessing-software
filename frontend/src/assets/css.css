@@ -1,0 +1,398 @@
+*{
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+
+opacity: 0.93;
+
+}
+
+/* 折叠状态 - 完美贴边 */
+.music-player.collapsed {
+  transform: translateY(-50%) translateX(calc(100% - 40px)); /* 精确贴边 */
+  width: 40px;
+  height: 80px;
+  border-radius: 15px 0 0 15px; /* 保持圆角 */
+  background: rgba(211, 42, 174, 0.6); /* 折叠后颜色更深 */
+}
+
+/* 悬停效果 */
+.music-player.collapsed:hover {
+  transform: translateY(-50%) translateX(calc(100% - 45px)); /* 轻微弹出 */
+  background: rgba(211, 42, 174, 0.7);
+}
+
+/* 展开时内部元素布局 */
+.player-body {
+  padding: 15px;
+  transition: opacity 0.2s ease;
+}
+
+.music-player.collapsed .player-body {
+  opacity: 0;
+  pointer-events: none; /* 防止折叠时误触 */
+}
+
+/* 折叠按钮样式 */
+.collapse-btn {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: paleturquoise;
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 0.3s ease;
+}
+
+.music-player.collapsed .collapse-btn {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.player-header {
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: rgba(235, 23, 146, 0.3);
+}
+
+.player-icon {
+  font-size: 16px;
+}
+
+.player-body {
+  padding: 15px;
+}
+
+.now-playing {
+  margin-bottom: 15px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.wrap{
+    width: 100%;
+    height: 100vh;
+    background: url(./images/background.png)  center no-repeat ;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+}
+.nav{
+    position: absolute;
+    left: 0;
+    width: 200px;
+    height: 700px;
+    background: rgba(0,0,0,0.8);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: 0.5s;
+
+}
+/* .nav:hover{
+    width: 280px;
+
+} */
+.btn{
+   width: 60px; 
+   height: 10px;
+   display: flex;
+   justify-content: space-around;
+   margin-top: 25px;
+   margin-left: 25px;
+
+}
+.btn-item{
+    margin-top: -10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.btn-item:nth-child(1){
+    background: #d81c1c;
+}
+.btn-item:nth-child(2){
+    background: #2ae496;
+}
+.btn-item:nth-child(3){
+    background: #eccb0e;
+}
+/* .icon{
+    width: 250px;
+    height: 60px;
+    margin-top: 15px;
+    margin-left: 15px;
+    display: flex;
+} */
+/* .icon-img{
+    margin-top: -10px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 4px rgba(255,255,255,0.3);
+    overflow: hidden;
+}
+.icon-img img{
+    
+   width: 100%;
+   height: 100%;
+   border-radius: 50%;
+   object-fit: cover;
+}
+.icon-con{
+    height: 60px;
+    margin-left: 25px;
+    
+}
+.icon-con p{
+  margin-top: -30px;
+  color: #eb515e; 
+  font-size: 25px;
+}
+
+.icon-con h2{
+    font-weight: 400;
+    font-size: 16px;
+    margin-top: 5px;
+    color: rgb(229, 235, 240);
+} */
+.line{
+  width: 60px;
+  height: 3px;
+  background: rgba(245, 253, 255, 0.5);
+  margin: 20px,25px;
+  transition: 0.5s;
+}
+.nav:hover .line{
+    width: 150px;
+}
+.title{
+    width: 60px;
+    margin-top: 10px;
+    margin-left: 25px;
+    margin-bottom: 20px;
+    color: rgb(252, 29, 151);
+
+}
+.title p{
+    font-size: 15px;
+}
+.menu{
+    width: 230px;
+    margin-left: 25px;
+}
+.serve{
+    width: 230px;
+    margin-left: 25px;
+}
+.item{
+    display: flex;
+    position: relative;
+    border-radius: 6px;
+    transition: 0.5s;
+}
+.item:hover{
+    background: rgba(255,255,255,0.1);
+    margin-left: 25px;
+
+}
+.licon{
+    
+    width: 60px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.con{
+    
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.5s;
+    overflow: hidden;
+    position: relative;
+    left: -20px;
+    opacity: 1;
+    color: rgb(238, 145, 222);
+
+}
+.nav:hover.con{
+ width: 160px;
+ display: flex;
+ justify-items: center;
+ align-items: center;
+ opacity: 1;
+ 
+}
+.ricon{
+    width: 0px;
+    height: 50px;
+    transition: 0.5s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    opacity: 0;
+
+}
+.nav:hover.ricon{
+ width: 60px;
+ display: flex;
+ justify-items: center;
+ align-items: center;
+ opacity: 1;
+}
+.iconfont{
+    font-size: 26px;
+}
+.ricon .iconfont{
+    
+    color: #62cb44;
+}
+.light{
+    width: 3px;
+    height: 50px;
+    background: #eb5a56;
+    position: absolute;
+    left: -25px;
+    transition: 0.5s;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+   
+}
+.iconfont.icon-bianji {
+    position: relative;
+    margin-top: 50px;
+    font-size: 25px;
+    margin-left: 50px;
+    color: #e0e6e5;
+  }
+.iconfont.icon-zhanghao {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-yonghu1 {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-fenlei {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-a-weixin_huaban1 {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-huodong {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-clock {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-tishi {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+.iconfont.icon-shezhi {
+    font-size: 30px;
+    margin-left: -30px;
+    color: #42e9e0;
+  }
+
+  /*用户编辑头像和用户名的样式 */
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .avatar-upload {
+    position: relative;
+    cursor: pointer;
+  }
+  .avatar-upload:hover::after {
+    content: "点击更换";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    text-align: center;
+    padding: 4px;
+  }
+  
+  .icon-img img {
+    margin-left: 10px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ddd;
+  }
+  
+  .username-edit {
+    width: 80px;
+    height: 170px;
+   margin-top: -30px;
+    
+    align-items: center;
+  }
+  .username-edit p{
+    margin-top: 0;
+    margin-right: 20px;
+    width: 25px;
+    color: #34f10e; 
+    font-size: 25px;
+  }
+
+  .username-edit h2{
+    cursor: text;
+    width: 39px;
+    height: 690px;
+    margin-left: 50px;
+    margin-top: -70px;
+    border-radius: 20px;
+    font-size: 25px;
+    font-weight: bold;
+    font-style: italic;
+    
+  background: linear-gradient(to bottom,lightblue,pink);
+    color:rgb(230, 97, 119);
+} 
+.iconfont.icon-bianji {
+    display: flex;
+    margin-top: -600px;
+    margin-left: -10px;
+    font-size: 40px;
+    color: #999;
+    cursor: pointer;
+  }
+  .iconfont.icon-bianji:hover {
+    color: #1890ff;
+  }
+  /*用户编辑头像和用户名的样式 */

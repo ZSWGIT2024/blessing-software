@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/tr/.claude/**)",
+      "Bash(node -e \"const fs = require\\('fs'\\); const data = fs.readFileSync\\(process.env.HOME + '/.claude/.mcp.json', 'utf8'\\); JSON.parse\\(data\\); console.log\\('JSON 语法正确'\\); console.log\\('服务器数量:', Object.keys\\(JSON.parse\\(data\\).mcpServers\\).length\\); Object.keys\\(JSON.parse\\(data\\).mcpServers\\).forEach\\(k => console.log\\('  -', k\\)\\)\")"
+    ]
+  }
+}

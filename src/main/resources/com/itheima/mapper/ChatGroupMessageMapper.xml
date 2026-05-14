@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.ChatGroupMessageMapper">
+
+    <resultMap id="groupMessageResult" type="com.itheima.dto.GroupMessageDTO">
+        <id property="id" column="id"/>
+        <result property="messageId" column="message_id"/>
+        <result property="groupId" column="group_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="senderName" column="sender_name"/>
+        <result property="senderAvatar" column="sender_avatar"/>
+        <result property="contentType" column="content_type"/>
+        <result property="content" column="content"/>
+        <result property="fileId" column="file_id"/>
+        <result property="extraData" column="extra_data" javaType="java.util.Map" typeHandler="com.itheima.handler.JsonTypeHandler"/>
+        <result property="status" column="status"/>
+        <result property="mentionAll" column="mention_all"/>
+        <result property="readCount" column="read_count"/>
+        <result property="totalMembers" column="total_members"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectHistory" resultMap="groupMessageResult">
+        SELECT
+            cgm.id,
+            cgm.message_id,
+            cgm.group_id,
+            cgm.sender_id,
+            u.username AS sender_name,
+            u.avatar AS sender_avatar,
+            cgm.content_type,
+            cgm.content,
+            cgm.file_id,
+            cgm.extra_data,
+            cgm.status,
+            cgm.mention_all,
+            cgm.create_time,
+            (SELECT COUNT(*) FROM chat_group_message_read WHERE message_id = cgm.message_id AND is_read = 1) AS read_count,
+            (SELECT COUNT(*) FROM chat_group_member WHERE group_id = cgm.group_id AND leave_time IS NULL) AS total_members
+        FROM chat_group_message cgm
+        LEFT JOIN user u ON cgm.sender_id = u.id
+        WHERE cgm.group_id = #{groupId} AND cgm.is_deleted = 0
+        <if test="lastMessageId != null and lastMessageId != ''">
+            AND cgm.create_time &lt; (
+                SELECT create_time FROM chat_group_message WHERE message_id = #{lastMessageId}
+            )
+        </if>
+        ORDER BY cgm.create_time DESC
+        LIMIT #{pageSize}
+    </select>
+
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.ChatWorldMessageMapper">
+
+    <select id="selectRecentWithUser" resultType="com.itheima.dto.WorldMessageDTO">
+        SELECT
+            cwm.id,
+            cwm.message_id AS messageId,
+            cwm.sender_id AS senderId,
+            u.username AS senderName,
+            u.avatar AS senderAvatar,
+            cwm.content_type AS contentType,
+            cwm.content,
+            cwm.original_content AS originalContent,
+            cwm.file_url AS fileUrl,
+            cwm.extra_data AS extraData,
+            cwm.status,
+            cwm.is_deleted AS isDeleted,
+            cwm.is_filtered AS isFiltered,
+            cwm.filtered_words AS filteredWords,
+            cwm.withdraw_time AS withdrawTime,
+            cwm.withdraw_reason AS withdrawReason,
+            cwm.create_time AS createTime,
+            cwm.update_time AS updateTime
+        FROM chat_world_message cwm
+        LEFT JOIN user u ON cwm.sender_id = u.id
+        WHERE cwm.is_deleted = 0
+        ORDER BY cwm.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

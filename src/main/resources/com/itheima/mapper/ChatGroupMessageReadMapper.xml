@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.ChatGroupMessageReadMapper">
+
+    <select id="selectReadUserInfo" resultType="java.util.Map">
+        SELECT
+            cgmr.user_id AS userId,
+            u.username,
+            u.avatar,
+            cgmr.read_time AS readTime
+        FROM chat_group_message_read cgmr
+        LEFT JOIN user u ON cgmr.user_id = u.id
+        WHERE cgmr.message_id = #{messageId} AND cgmr.is_read = 1
+    </select>
+
+</mapper>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.FavoriteMapper">
+
+    <!-- 查询用户的收藏夹（带收藏数量） -->
+    <select id="selectFoldersWithCount" resultType="com.itheima.pojo.FavoriteFolder">
+        SELECT ff.id, ff.user_id, ff.folder_name, ff.description, ff.cover_image, ff.is_default,
+               ff.is_private, ff.sort_order, ff.item_count, ff.create_time, ff.update_time,
+               COUNT(f.id) as favoriteCount
+        FROM favorite_folder ff
+        LEFT JOIN favorite f ON ff.id = f.folder_id
+        WHERE ff.user_id = #{userId}
+        GROUP BY ff.id, ff.user_id, ff.folder_name, ff.description, ff.cover_image, ff.is_default,
+                 ff.is_private, ff.sort_order, ff.item_count, ff.create_time, ff.update_time
+        ORDER BY ff.sort_order
+    </select>
+
+    <!-- 批量移动收藏到指定收藏夹 -->
+    <update id="batchMoveToFolder">
+        UPDATE favorite SET folder_id = #{folderId}
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheima.mapper.ChatGroupMapper">
+
+    <select id="selectMyGroups" resultType="com.itheima.dto.GroupListDTO">
+        SELECT
+            cg.group_id AS groupId,
+            cg.name,
+            cg.avatar,
+            cg.owner_id AS ownerId,
+            ou.username AS ownerName,
+            cg.current_members AS currentMembers,
+            cg.max_members AS maxMembers,
+            cgm.role AS myRole,
+            cgm.unread_count AS unreadCount,
+            lm.content AS lastMessage,
+            lm.create_time AS lastMessageTime,
+            cg.create_time AS createTime
+        FROM chat_group_member cgm
+        INNER JOIN chat_group cg ON cgm.group_id = cg.group_id AND cg.is_dissolved = 0
+        LEFT JOIN user ou ON cg.owner_id = ou.id
+        LEFT JOIN (
+            SELECT cgm2.group_id, cgm2.content, cgm2.create_time
+            FROM chat_group_message cgm2
+            INNER JOIN (
+                SELECT group_id, MAX(create_time) AS max_time
+                FROM chat_group_message
+                WHERE is_deleted = 0
+                GROUP BY group_id
+            ) latest ON cgm2.group_id = latest.group_id AND cgm2.create_time = latest.max_time
+            WHERE cgm2.is_deleted = 0
+        ) lm ON cg.group_id = lm.group_id
+        WHERE cgm.user_id = #{userId} AND cgm.leave_time IS NULL
+        ORDER BY COALESCE(lm.create_time, cgm.join_time) DESC
+    </select>
+
+</mapper>
