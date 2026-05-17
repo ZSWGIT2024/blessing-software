@@ -26,12 +26,36 @@
         </button>
       </div>
 
-      <!-- 自定义弹窗 -->
+      <!-- 用户名编辑弹窗（含实时校验） -->
+      <div v-if="showUsernameDialog" class="custom-dialog">
+        <div class="dialog-content">
+          <h3>修改用户名</h3>
+          <p>请输入新用户名 (2-18个字符)</p>
+          <div class="username-input-wrapper">
+            <input
+              v-model="usernameInput"
+              @input="onUsernameInput"
+              @keyup.enter="confirmUsername"
+              ref="usernameDialogInput"
+              placeholder="请输入用户名"
+              :class="{ 'input-valid': usernameStatus === 'valid', 'input-invalid': usernameStatus === 'invalid' }"
+            />
+            <span v-if="usernameStatus === 'checking'" class="status-icon checking">⏳</span>
+            <span v-if="usernameStatus === 'valid'" class="status-icon valid">✅ {{ usernameMessage }}</span>
+            <span v-if="usernameStatus === 'invalid'" class="status-icon invalid">❌ {{ usernameMessage }}</span>
+          </div>
+          <div class="dialog-actions">
+            <button @click="cancelUsernameDialog">取消</button>
+            <button @click="confirmUsername" :disabled="usernameStatus !== 'valid'">确认</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 通用弹窗（保留用于错误提示等） -->
       <div v-if="showDialog" class="custom-dialog">
         <div class="dialog-content">
           <h3>{{ dialogTitle }}</h3>
           <p>{{ dialogMessage }}</p>
-          <input v-if="dialogType === 'prompt'" v-model="inputValue" @keyup.enter="confirmDialog" ref="dialogInput">
           <div class="dialog-actions">
             <button @click="cancelDialog">取消</button>
             <button @click="confirmDialog">确认</button>
@@ -103,7 +127,7 @@
         <div class="licon">
           <span class="iconfont icon-clock"></span>
         </div>
-        <div class="con">隐私设置</div>
+        <div class="con">个性设置</div>
         <div class="ricon"></div>
       </div>
       <div class="item" :class="{ active: activeTab === 'FeedBack' }" @click="switchTab('FeedBack')">
@@ -174,7 +198,7 @@ import FeedBack from '../views/FeedBack.vue'
 import UserSettings from '../views/UserSettings.vue'
 import ConfirmDialog from '../views/ConfirmDialog.vue'
 import { shallowRef } from 'vue'
-import { userInfoService } from '@/api/user'
+import { userInfoService, checkUsernameService } from '@/api/user'
 import { useUserInfoStore } from '@/stores/userInfo'
 import { ElMessage } from 'element-plus'
 import { updateUserNameService, useUpdateAvatarService } from '@/api/user.js'
@@ -222,8 +246,8 @@ const handleAvatarChange = async (event) => {
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
       throw new Error('请上传JPEG/PNG/WEBP/GIF格式图片');
     }
-    if (file.size > 15 * 1024 * 1024) {
-      throw new Error('图片大小不能超过15MB');
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('图片大小不能超过10MB');
     }
 
     isUploading.value = true;
@@ -367,6 +391,13 @@ const dialogType = ref('alert')
 const inputValue = ref('')
 let dialogResolve = null
 
+// Username edit dialog state
+const showUsernameDialog = ref(false)
+const usernameInput = ref('')
+const usernameStatus = ref('') // '', 'checking', 'valid', 'invalid'
+const usernameMessage = ref('')
+let usernameCheckTimer = null
+
 // Toast state
 const showToast = ref(false)
 const toastMessage = ref('')
@@ -384,24 +415,7 @@ const showToastMessage = (message, type = 'success', duration = 3000) => {
   }, duration)
 }
 
-const showCustomDialog = (type, title, message, defaultValue = '') => {
-  dialogType.value = type
-  dialogTitle.value = title
-  dialogMessage.value = message
-  inputValue.value = defaultValue
-  showDialog.value = true
-
-  return new Promise((resolve) => {
-    dialogResolve = resolve
-  })
-}
-
 const confirmDialog = () => {
-  //如果用户名输入不合法，不关闭对话框
-  if (validateUsername(inputValue.value) !== true) {
-    ElMessage.warning('用户名不合法，请重新输入');
-    return;
-  }
   showDialog.value = false
   if (dialogResolve) {
     dialogResolve(dialogType.value === 'prompt' ? inputValue.value : true)
@@ -470,49 +484,93 @@ const compressImage = async (file, options = {}) => {
   });
 };
 
-const validateUsername = (name) => {
+const validateUsernameLocal = (name) => {
   if (!name || name.trim().length < 2) return '用户名不能小于2个字符'
   if (name.length > 18) return '用户名不能超过18个字符'
   //可以包含更多标点符合的校验规则，如—，@，￥，%，#等
   // 允许使用中划线、下划线、点号、逗号、感叹号、问号、括号
   if (!/^[\u4e00-\u9fa5a-zA-Z0-9-_.，！？、@#$%^&*()]+$/g.test(name))
     return '用户名只能包含中文、字母、数字、中划线、下划线、点号、逗号、感叹号、问号、括号、@#$%^&*等'
-  return true
+  return null
 }
 
-const editUsername = async () => {
-  try {
-    const newName = await showCustomDialog(
-      'prompt',
-      '修改用户名',
-      '请输入新用户名 (2-18个字符)',
-      userInfoStore.currentUser.username
-    );
-
-    if (newName === null) return;
-    if (newName === userInfoStore.currentUser.username) {
-      return;
+const checkUsernameOnServer = () => {
+  if (usernameCheckTimer) clearTimeout(usernameCheckTimer)
+  usernameCheckTimer = setTimeout(async () => {
+    const name = usernameInput.value.trim()
+    if (!name || validateUsernameLocal(name)) return
+    usernameStatus.value = 'checking'
+    try {
+      const res = await checkUsernameService(name, userInfoStore.currentUser?.id)
+      if (res.code === 0 && res.data) {
+        if (res.data.available) {
+          usernameStatus.value = 'valid'
+          usernameMessage.value = res.data.message || '用户名可用'
+        } else {
+          usernameStatus.value = 'invalid'
+          usernameMessage.value = res.data.message || '用户名不可用'
+        }
+      }
+    } catch {
+      usernameStatus.value = ''
+      usernameMessage.value = ''
     }
+  }, 400)
+}
 
-    const validationError = validateUsername(newName);
-    if (validationError !== true) {
-      showCustomDialog('error', '用户名不合法', validationError)
-      return;
-    }
-
-    const trimmedName = newName.trim();
-    //调用接口更新用户名信息
-    let result = await updateUserNameService(trimmedName);
-    ElMessage.success(result.msg ? result.msg : '更新成功')
-    //修改pinia中的currentUser
-    userInfoStore.currentUser.username = trimmedName
-  } catch (error) {
-    console
-      .error('用户名修改失败:', error);
-    // 失败时恢复之前的用户名
-    username.value = userInfoStore.currentUser.username;
-    ElMessage.error('用户名修改失败');
+const onUsernameInput = () => {
+  const name = usernameInput.value.trim()
+  if (!name) {
+    usernameStatus.value = ''
+    usernameMessage.value = ''
+    if (usernameCheckTimer) clearTimeout(usernameCheckTimer)
+    return
   }
+  const localError = validateUsernameLocal(name)
+  if (localError) {
+    usernameStatus.value = 'invalid'
+    usernameMessage.value = localError
+    if (usernameCheckTimer) clearTimeout(usernameCheckTimer)
+    return
+  }
+  if (name === userInfoStore.currentUser.username) {
+    usernameStatus.value = 'valid'
+    usernameMessage.value = '与当前用户名一致'
+    if (usernameCheckTimer) clearTimeout(usernameCheckTimer)
+    return
+  }
+  checkUsernameOnServer()
+}
+
+const editUsername = () => {
+  usernameInput.value = userInfoStore.currentUser.username
+  usernameStatus.value = ''
+  usernameMessage.value = ''
+  showUsernameDialog.value = true
+}
+
+const confirmUsername = async () => {
+  if (usernameStatus.value !== 'valid') return
+  const trimmedName = usernameInput.value.trim()
+  if (!trimmedName || trimmedName === userInfoStore.currentUser.username) {
+    showUsernameDialog.value = false
+    return
+  }
+  try {
+    const result = await updateUserNameService(trimmedName)
+    ElMessage.success(result.msg ? result.msg : '用户名更新成功')
+    userInfoStore.currentUser.username = trimmedName
+    showUsernameDialog.value = false
+  } catch (error) {
+    console.error('用户名修改失败:', error)
+    ElMessage.error('用户名修改失败')
+  }
+}
+
+const cancelUsernameDialog = () => {
+  showUsernameDialog.value = false
+  if (usernameCheckTimer) clearTimeout(usernameCheckTimer)
+  usernameStatus.value = ''
 }// Tab management methods
 const startDrag = (e) => {
   if (e.target.classList.contains('tab-content') ||
@@ -1066,6 +1124,69 @@ onUnmounted(() => {
 
 .dialog-actions button:hover {
   opacity: 0.9;
+}
+
+.dialog-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 用户名实时校验样式 */
+.username-input-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction:column;
+  align-items: center;
+  margin-right: 250px;
+  margin-top: 180px;
+  gap: 8px;
+}
+
+.username-input-wrapper input {
+  width: 60%;
+  padding: 12px 16px;
+  margin-top: 40px;
+  border: 2px solid #56f3a5;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.username-input-wrapper input::placeholder {
+  color: #4b69f0;
+}
+
+
+
+.username-input-wrapper input:focus {
+  border-color: #3498db;
+}
+
+.username-input-wrapper input.input-valid {
+  border-color: #4caf50;
+}
+
+.username-input-wrapper input.input-invalid {
+  border-color: #f44336;
+}
+
+.status-icon {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.status-icon.valid {
+  color: #4caf50;
+}
+
+.status-icon.invalid {
+  color: #f44336;
+}
+
+.status-icon.checking {
+  color: #ff9800;
 }
 
 /*用户编辑头像和用户名的样式 */

@@ -5,6 +5,7 @@ import com.itheima.config.MediaProperties;
 import com.itheima.dto.MediaQueryDTO;
 import com.itheima.dto.MediaUpdateDTO;
 import com.itheima.dto.MediaUploadDTO;
+import com.itheima.dto.SubmitBatchRequest;
 import com.itheima.exception.BusinessException;
 import com.itheima.mapper.MediaLikeMapper;
 import com.itheima.mapper.MediaMapper;
@@ -45,16 +46,12 @@ import java.util.stream.Collectors;
 public class MediaServiceImpl implements MediaService {
 
     private final MediaProperties mediaProperties;
-
     private final MediaMapper mediaMapper;
-
     private final MediaLikeMapper mediaLikeMapper;
-
     private final UserMapper userMapper;
-
     private final DailyUploadService dailyUploadService;
-
     private final AliOssUtil aliOssUtil;
+    private final MediaCacheService mediaCacheService;
 
 
     @Override
@@ -107,7 +104,7 @@ public class MediaServiceImpl implements MediaService {
                 validateVideoFile(files.get(0));
             }
 
-            // 6. 限制批量上传数量（图片最多20个）
+            // 6. 限制批量上传数量（图片最多10个）
             int imageMaxBatchCount = mediaProperties.getImage().getMaxBatchCount();
             if (!hasVideo && files.size() > imageMaxBatchCount) {
                 throw new RuntimeException("一次最多只能上传" + imageMaxBatchCount + "个文件");
@@ -154,6 +151,7 @@ public class MediaServiceImpl implements MediaService {
             // 7. 更新上传计数（只计算成功的文件）
             if (successCount > 0) {
                 dailyUploadService.updateUploadCount(dto.getUserId(), successCount);
+                mediaCacheService.evictAllMediaCacheByUser(dto.getUserId()); // 清除该用户所有媒体缓存
             }
 
             // 8. 检查是否有文件失败
@@ -255,10 +253,19 @@ public class MediaServiceImpl implements MediaService {
             throw new IllegalArgumentException("状态参数必须是 active，pending或hidden");
         }
 
-        // 3. 查询总记录数
+        // 3. 查缓存（仅首页命中率高）
+        if (queryDTO.getPageNum() == 1) {
+            String cacheKey = mediaCacheService.mediaListKey(
+                    queryDTO.getUserId(), queryDTO.getStatus(), queryDTO.getMediaType(), 1, queryDTO.getPageSize());
+            Object cached = mediaCacheService.getCachedMediaList(cacheKey);
+            if ("NULL".equals(cached)) return new PageBean<>();
+            if (cached instanceof PageBean) return (PageBean<MediaVO>) cached;
+        }
+
+        // 4. 查询总记录数
         Long total = mediaMapper.countByUserAndStatus(queryDTO);
 
-        // 4. 查询数据列表
+        // 5. 查询数据列表
         List<UserMedia> mediaList = mediaMapper.selectByUserAndStatus(queryDTO);
 
         // 5. 转换为VO列表，并设置点赞状态
@@ -284,6 +291,17 @@ public class MediaServiceImpl implements MediaService {
         pageBean.setPageSize(queryDTO.getPageSize());
         pageBean.setItems(voList);
 
+        // 7. 写缓存（仅首页，防穿透）
+        if (queryDTO.getPageNum() == 1) {
+            String cacheKey = mediaCacheService.mediaListKey(
+                    queryDTO.getUserId(), queryDTO.getStatus(), queryDTO.getMediaType(), 1, queryDTO.getPageSize());
+            if (voList.isEmpty()) {
+                mediaCacheService.cacheMediaListNull(cacheKey);
+            } else {
+                mediaCacheService.cacheMediaList(cacheKey, pageBean);
+            }
+        }
+
         return pageBean;
     }
 
@@ -305,10 +323,19 @@ public class MediaServiceImpl implements MediaService {
             throw new IllegalArgumentException("用户ID不能为空");
         }
 
-        // 3. 查询总记录数（不筛选状态）
+        // 3. 查缓存（仅首页）
+        if (queryDTO.getPageNum() == 1) {
+            String cacheKey = mediaCacheService.mediaListKey(
+                    queryDTO.getUserId(), "all", queryDTO.getMediaType(), 1, queryDTO.getPageSize());
+            Object cached = mediaCacheService.getCachedMediaList(cacheKey);
+            if ("NULL".equals(cached)) return new PageBean<>();
+            if (cached instanceof PageBean) return (PageBean<MediaVO>) cached;
+        }
+
+        // 4. 查询总记录数（不筛选状态）
         Long total = mediaMapper.countAllStatusByUser(queryDTO);
 
-        // 4. 查询数据列表（不筛选状态）
+        // 5. 查询数据列表（不筛选状态）
         List<UserMedia> mediaList = mediaMapper.selectAllStatusByUser(queryDTO);
 
         // 5. 转换为VO列表，并设置点赞状态
@@ -334,14 +361,30 @@ public class MediaServiceImpl implements MediaService {
         pageBean.setPageSize(queryDTO.getPageSize());
         pageBean.setItems(voList);
 
+        // 7. 写缓存（首页，防穿透）
+        if (queryDTO.getPageNum() == 1) {
+            String cacheKey = mediaCacheService.mediaListKey(
+                    queryDTO.getUserId(), "all", queryDTO.getMediaType(), 1, queryDTO.getPageSize());
+            if (voList.isEmpty()) {
+                mediaCacheService.cacheMediaListNull(cacheKey);
+            } else {
+                mediaCacheService.cacheMediaList(cacheKey, pageBean);
+            }
+        }
+
         return pageBean;
     }
 
     @Override
     public MediaVO getMediaDetail(Integer mediaId, Integer userId) {
-        // 1. 获取媒体信息
+        // 1. 查缓存
+        MediaVO cached = mediaCacheService.getCachedMediaDetail(mediaId);
+        if (cached != null) return cached;
+
+        // 2. 获取媒体信息
         UserMedia media = mediaMapper.selectById(mediaId);
         if (media == null || "hidden".equals(media.getStatus())) {
+            mediaCacheService.cacheMediaDetailNull(mediaId); // 防穿透
             throw new RuntimeException("媒体文件不存在或为通过审核");
         }
 
@@ -364,6 +407,9 @@ public class MediaServiceImpl implements MediaService {
         MediaVO vo = MediaConverter.toVO(media);
         vo.setLiked(liked);
 
+        // 6. 写缓存
+        mediaCacheService.cacheMediaDetail(mediaId, vo);
+
         return vo;
     }
 
@@ -383,6 +429,9 @@ public class MediaServiceImpl implements MediaService {
 
         // 3. 直接删除数据库中的数据
         int rows = mediaMapper.delete(mediaId);
+
+        // 4. 清除缓存
+        mediaCacheService.evictOnMediaChange(mediaId, userId);
 
         log.info("用户 {} 删除了媒体文件: {}", userId, mediaId);
 
@@ -428,7 +477,9 @@ public class MediaServiceImpl implements MediaService {
 
         // 5. 获取更新后的数据并返回
         UserMedia updatedMedia = mediaMapper.selectById(mediaId);
-        return MediaConverter.toVO(updatedMedia);
+        MediaVO vo = MediaConverter.toVO(updatedMedia);
+        mediaCacheService.evictOnMediaChange(mediaId, updateDTO.getUserId());
+        return vo;
     }
 
     @Override
@@ -652,7 +703,6 @@ public class MediaServiceImpl implements MediaService {
             userMedia.setOriginalName(file.getOriginalFilename());
             userMedia.setFilePath(ossUrl);
             userMedia.setThumbnailPath(getDefaultThumbnailUrl());
-//            userMedia.setThumbnailPath(thumbnailPath);
             userMedia.setFileSize(tempFile.length());
             userMedia.setMimeType(file.getContentType());
             userMedia.setDescription(dto.getDescription());
@@ -1109,5 +1159,50 @@ public class MediaServiceImpl implements MediaService {
         };
     }
 
+    @Override
+    @Transactional
+    public List<MediaVO> batchSubmit(Integer userId, SubmitBatchRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BusinessException("提交列表不能为空");
+        }
+        User user = userMapper.findUserById(userId);
+        if (user == null) throw new BusinessException("用户不存在");
+        if (!user.isActive()) throw new BusinessException("账号状态异常，无法提交");
+        dailyUploadService.checkUploadLimit(userId, request.getItems().size());
+
+        List<MediaVO> results = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        int successCount = 0;
+        for (SubmitBatchRequest.SubmitItem item : request.getItems()) {
+            String originalName = item.getOriginalName() != null ? item.getOriginalName()
+                    : item.getFileUrl().substring(item.getFileUrl().lastIndexOf('/') + 1);
+            String fn = item.getFileName() != null ? item.getFileName()
+                    : originalName.replaceFirst("\\.[^.]+$", "");
+            UserMedia m = new UserMedia();
+            m.setUserId(userId);
+            m.setMediaType(item.getMediaType() != null ? item.getMediaType() : "image");
+            m.setMimeType(item.getMimeType() != null && !item.getMimeType().isEmpty()
+                    ? item.getMimeType() : "application/octet-stream");
+            m.setWidth(item.getWidth()); m.setHeight(item.getHeight()); m.setDuration(item.getDuration());
+            m.setFilename(fn); m.setOriginalName(originalName);
+            m.setFilePath(item.getFileUrl()); m.setThumbnailPath(item.getFileUrl());
+            m.setFileSize(item.getFileSize()); m.setDescription(item.getDescription());
+            m.setCategory(item.getCategory());
+            m.setWall(item.getWall() != null ? item.getWall() : (Math.random() > 0.5 ? "left" : "right"));
+            m.setIsPublic(item.getIsPublic() != null ? item.getIsPublic() : true);
+            m.setUploadIp(request.getUploadIp());
+            m.setUploadTime(now); m.setUpdateTime(now);
+            m.setViewCount(0); m.setLikeCount(0); m.setStatus("pending");
+            mediaMapper.insert(m);
+            results.add(MediaConverter.toVO(m));
+            successCount++;
+        }
+        if (successCount > 0) {
+            try { dailyUploadService.updateUploadCount(userId, successCount); }
+            catch (Exception e) { log.warn("更新上传计数失败: userId={}", userId, e); }
+        }
+        log.info("用户 {} 批量提交了 {} 个AI作品到 user_media", userId, results.size());
+        return results;
+    }
 
 }

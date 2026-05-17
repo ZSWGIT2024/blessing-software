@@ -113,7 +113,7 @@
       </div>
     </div>
      <!-- 聊天窗口 -->
-    <PrivateMessage v-if="userData" :visible="showChatModal" :targetUser="userData"
+    <PrivateMessage v-if="userData" :visible="showChatModal" :targetUser="userData || friendId"
       @update:visible="handleChatVisibleChange" @close="closeChat" />
   </div>
 </template>
@@ -131,7 +131,7 @@ const props = defineProps({
     default: false
   },
   friendId: {
-    type: [Number, String],
+    type: Number,
     default: null  // 改为默认 null
   }
 })

@@ -66,7 +66,7 @@
             <i class="iconfont icon-shipin"></i> 视频展示
           </template>
           <template v-else>
-            <i class="iconfont icon-tiezi"></i> 帖子展示
+            <i class="iconfont icon-tiezi"></i> 动态展示
           </template>
           <span class="content-count" v-if="contentType !== 'posts'">
             (共 {{ currentContent.length }} 个)
@@ -223,7 +223,7 @@
           </div>
         </template>
 
-        <!-- 帖子内容 -->
+        <!-- 动态内容 -->
         <template v-else>
           <div v-if="filteredPosts.length > 0" class="post-list">
             <div v-for="post in filteredPosts" :key="`post-${post.id}`" class="post-item">
@@ -265,7 +265,7 @@
           </div>
           <div v-else class="empty-state">
             <div class="empty-icon">📝</div>
-            <p>暂无帖子内容</p>
+            <p>暂无动态内容</p>
             <button @click="fetchData">刷新</button>
           </div>
         </template>
@@ -372,7 +372,7 @@ const tabs = ref([
   },
   {
     value: 'posts',
-    label: '帖子',
+    label: '动态',
     icon: 'iconfont icon-tiezi'
   }
 ])
@@ -514,14 +514,14 @@ const switchContentType = async (type) => {
       console.warn('用户ID为空，无法获取媒体数据')
     }
   } else {
-    // 切换到帖子标签
-    console.log('切换到帖子标签')
+    // 切换到动态标签
+    console.log('切换到动态标签')
 
     // 清除图片视频数据
     allPhotos.value = []
     allVideos.value = []
 
-    // 获取帖子数据
+    // 获取动态数据
     await fetchPostsData()
   }
 }
@@ -796,7 +796,7 @@ watch([orderBy, order], () => {
   }
 })
 
-// 在组件中添加模拟帖子数据
+// 在组件中添加模拟动态数据
 const posts = ref([
   {
     id: 1001,
@@ -1028,17 +1028,17 @@ const filteredPosts = computed(() => {
 
 // 修改 fetchPostsData 方法
 const fetchPostsData = async () => {
-  console.log('开始获取帖子数据')
+  console.log('开始获取动态数据')
   isLoading.value = true
 
   try {
     // 如果已经有模拟数据，就直接使用
     if (posts.value.length > 0) {
-      console.log('使用现有帖子数据:', posts.value.length, '条')
+      console.log('使用现有动态数据:', posts.value.length, '条')
       return
     }
 
-    // 这里可以添加获取帖子数据的API调用
+    // 这里可以添加获取动态数据的API调用
     // 暂时使用新的模拟数据
     const mockPosts = [
       {
@@ -1067,9 +1067,9 @@ const fetchPostsData = async () => {
     ]
 
     posts.value = mockPosts
-    console.log('帖子数据获取成功:', posts.value.length, '条')
+    console.log('动态数据获取成功:', posts.value.length, '条')
   } catch (error) {
-    console.error('获取帖子数据失败:', error)
+    console.error('获取动态数据失败:', error)
     error.value = error
   } finally {
     isLoading.value = false
@@ -1087,7 +1087,7 @@ const fetchData = () => {
   }
 }
 
-// 添加帖子的点赞功能
+// 添加动态的点赞功能
 const likePost = (post) => {
   post.isLiked = !post.isLiked
   if (post.isLiked) {
@@ -1097,7 +1097,7 @@ const likePost = (post) => {
   }
 
   // 这里可以添加API调用
-  console.log('点赞帖子:', post.id, '当前点赞数:', post.likes)
+  console.log('点赞动态:', post.id, '当前点赞数:', post.likes)
 }
 
 // 添加评论功能
@@ -1126,14 +1126,14 @@ const sharePost = (post) => {
   const shareUrl = `${window.location.origin}/post/${post.id}`
   navigator.clipboard.writeText(shareUrl)
     .then(() => {
-      alert('帖子链接已复制到剪贴板！')
+      alert('动态链接已复制到剪贴板！')
     })
     .catch(err => {
       console.error('复制失败:', err)
       alert('复制失败，请手动复制链接')
     })
 
-  console.log('分享帖子:', post.id)
+  console.log('分享动态:', post.id)
 }
 
 // 修改时间格式化函数
@@ -1896,11 +1896,10 @@ const formatTime = (time) => {
 
 .error-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 5px 1px;
   color: #ff69b4;
   background: white;
   border-radius: 12px;
-  margin: 20px;
   border: 2px dashed #ff69b4;
 }
 

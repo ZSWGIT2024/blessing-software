@@ -26,7 +26,6 @@ public class User {
     @Pattern(regexp = "^1[3-9]\\d{9}$")
     private String phone;
 
-    @NotEmpty
     @Pattern(regexp = "^\\S{2,18}$")
     private String nickname;
 
@@ -55,7 +54,7 @@ public class User {
     private Integer userType = UserConstant.USER_TYPE_NORMAL;
 
 
-    @Pattern(regexp = "^(active|banned)$")
+    @Pattern(regexp = "^(active|banned|muted)$")
     private String status = UserConstant.STATUS_ACTIVE;
 
     // === 等级经验相关 ===

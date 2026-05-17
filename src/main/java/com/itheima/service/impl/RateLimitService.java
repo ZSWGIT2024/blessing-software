@@ -49,9 +49,12 @@ public class RateLimitService {
      */
     private boolean checkRateLimit(String key, int limit, int seconds) {
         try {
-            // 获取当前计数
-            Long count = (Long) redisUtil.get(key);
-            if (count == null) {
+            // 获取当前计数（Redis increment 可能返回 Integer 或 Long，安全转换）
+            Object raw = redisUtil.get(key);
+            Long count = null;
+            if (raw instanceof Number) {
+                count = ((Number) raw).longValue();
+            } else {
                 count = 0L;
             }
 
@@ -75,6 +78,19 @@ public class RateLimitService {
             log.error("检查频率限制失败 key:{}", key, e);
             return true; // 出现异常时放行，避免影响正常业务
         }
+    }
+
+    private static final int GROUP_MESSAGE_RATE_LIMIT = 30;
+    private static final int WORLD_CHAT_RATE_LIMIT = 5;
+
+    public boolean checkGroupMessageRate(Integer userId, String groupId) {
+        String key = String.format(RedisConstants.RATE_LIMIT_KEY, "group_msg:" + groupId, userId);
+        return checkRateLimit(key, GROUP_MESSAGE_RATE_LIMIT, 60);
+    }
+
+    public boolean checkWorldChatRate(Integer userId) {
+        String key = String.format(RedisConstants.RATE_LIMIT_KEY, "world_chat", userId);
+        return checkRateLimit(key, WORLD_CHAT_RATE_LIMIT, 60);
     }
 
     /**

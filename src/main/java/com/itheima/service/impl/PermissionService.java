@@ -1,4 +1,4 @@
-package com.itheima.service;
+package com.itheima.service.impl;
 
 import com.itheima.common.UserConstant;
 import com.itheima.mapper.UserMapper;

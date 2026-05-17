@@ -107,20 +107,13 @@ public class DailyUploadServiceImpl implements DailyUploadService {
     public String getVipTypeName(Integer vipType) {
         if (vipType == null) return "普通用户";
 
-        switch (vipType) {
-            case 0:
-                return "普通用户";
-            case 1:
-                return "月度VIP";
-            case 2:
-                return "季度VIP";
-            case 3:
-                return "年度VIP";
-            case 4:
-                return "终身VIP";
-            default:
-                return "普通用户";
-        }
+        return switch (vipType) {
+            case 1 -> "月度VIP";
+            case 2 -> "季度VIP";
+            case 3 -> "年度VIP";
+            case 4 -> "终身VIP";
+            default -> "普通用户";
+        };
     }
 
     // 修复：更新上传计数的方法

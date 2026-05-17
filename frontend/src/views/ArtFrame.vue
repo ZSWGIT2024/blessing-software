@@ -34,10 +34,16 @@
         <span class="art-type">{{ artwork.mediaType === 'video' ? '视频' : '图片' }}</span>
         <span class="art-year">{{ artwork.year }}</span>
       </div>
-      <div class="like-container">
+      <div v-if="artwork.status === 'active'" class="like-container">
         <span @click.stop="toggleLike" class="like-icon" :class="{ 'liked': liked }"
           :title="liked ? '取消喜欢' : '喜欢'">❤</span>
-        <span class="like-count">{{ likes }}</span>
+        <span class="like-count" title="点赞数">{{ likes }}</span>
+        <span @click.stop="toggleFavorite" class="fav-icon" :class="{ 'faved': isFaved }"
+          :title="isFaved ? '取消收藏' : '收藏'">{{ isFaved ? '⭐' : '☆' }}</span>
+        <span class="badge-row">
+          <span v-if="popularLevel" class="popular-badge" :class="popularLevel">{{ popularLabel }}</span>
+          <span v-if="isNew" class="new-badge">最新</span>
+        </span>
         <span v-if="artwork.userId === userStore.currentUser.id" class="public-hidden">
           {{ artwork.isPublic ? '公开' : '隐私' }}
         </span>
@@ -47,70 +53,82 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useUserInfoStore } from '@/stores/userInfo'
 import { toggleLikeService } from '@/api/media'
 import { toggleLikeSubmitService } from '@/api/submit'
+import * as favoriteApi from '@/api/favoriteApi'
 import { ElMessage } from 'element-plus'
 
-const props = defineProps({
-  artwork: {
-    type: Object,
-    required: true
-  }
-})
-
-// 使用ref管理状态，避免直接修改props
+const props = defineProps({ artwork: { type: Object, required: true } })
+const userStore = useUserInfoStore()
 const liked = ref(props.artwork.liked)
 const likes = ref(props.artwork.likes || 0)
+const isFaved = ref(false)
 
-// 监听props变化，确保状态同步
-watch(() => props.artwork, (newArtwork) => {
-  if (newArtwork) {
-    liked.value = newArtwork.liked
-    likes.value = newArtwork.likes || 0
-  }
-}, { immediate: true })
-
+const emit = defineEmits(['click'])
 const toggleLike = async () => {
+   // 如果作品状态为'pending'，则显示警告消息并返回
+  if (props.artwork.status === 'pending') {
+    ElMessage.warning('该作品正在审核中，暂时无法点赞')
+    return
+  }
   try {
-    if (!props.artwork?.id || !props.artwork?.userId) {
-      throw new Error('缺少必要的作品或用户信息')
-    }
-
-    console.log('操作作品:', props.artwork.id, '用户:', props.artwork.userId)
-    
-    // 根据category决定调用哪个API
-    const isAI = props.artwork.category.includes('AI')
-    const service = isAI ? toggleLikeService : toggleLikeSubmitService
-    
-    const response = await service(props.artwork.id, props.artwork.userId)
-    
+    if (!props.artwork?.id) throw new Error('缺少必要信息')
+    const service = (props.artwork.category || '').includes('AI') ? toggleLikeService : toggleLikeSubmitService
+    const response = await service(props.artwork.id, userStore.currentUser.id)
     if (response?.code === 0) {
-      // 更新本地状态
       liked.value = !liked.value
       likes.value = liked.value ? likes.value + 1 : Math.max(0, likes.value - 1)
-      
-      ElMessage.success(liked.value ? '点赞成功' : '取消点赞成功')
-    } else {
-      throw new Error(response?.msg || '操作失败')
-    }
+    } else throw new Error(response?.msg || '操作失败')
   } catch (error) {
-    console.error('点赞操作出错:', error)
-    ElMessage.error(error.message || '操作失败，请稍后重试')
+    ElMessage.error(error.message || '操作失败')
   }
 }
 
-const emit = defineEmits(['click'])
-const userStore = useUserInfoStore()
+const toggleFavorite = async () => {
+   // 如果作品状态为'pending'，则显示警告消息并返回
+  if (props.artwork.status === 'pending') {
+    ElMessage.warning('该作品正在审核中，暂时无法收藏')
+    return
+  }
+  if (!props.artwork?.id) return
+  try {
+    const res = await favoriteApi.toggleMediaFavorite(props.artwork.id, userStore.currentUser.id)
+    if (res.code === 0) {
+      isFaved.value = !isFaved.value
+      ElMessage.success(isFaved.value ? '已收藏' : '已取消收藏')
+    } else ElMessage.error(res.msg || '操作失败')
+  } catch (e) { ElMessage.error('操作失败') }
+}
+
+const popularLevel = computed(() => {
+  const v = props.artwork.viewCount || 0
+  if (v >= 100000) return 'purple'
+  if (v >= 10000) return 'pink'
+  if (v >= 1000) return 'yellow'
+  return null
+})
+const popularLabel = computed(() => {
+  const v = props.artwork.viewCount || 0
+  if (v >= 100000) return '爆款'
+  if (v >= 10000) return '热门'
+  if (v >= 1000) return '人气'
+  return ''
+})
+const isNew = computed(() => {
+  const t = props.artwork.uploadTime
+  if (!t) return false
+  return (Date.now() - new Date(t).getTime()) < 3 * 24 * 60 * 60 * 1000
+})
 
 // 点击事件处理函数
 const handleClick = (artwork) => {
-  // 如果作品状态为'pending'，则显示警告消息并返回
-  if (artwork.status === 'pending') {
-    ElMessage.warning('该作品正在审核中，暂时无法查看')
-    return
-  }
+  // // 如果作品状态为'pending'，则显示警告消息并返回
+  // if (artwork.status === 'pending') {
+  //   ElMessage.warning('该作品正在审核中，暂时无法查看')
+  //   return
+  // }
   emit('click', artwork)
 }
 
@@ -219,7 +237,7 @@ const handleClick = (artwork) => {
 }
 
 .blur-image {
-  filter: blur(4px);
+  filter: blur(8px);
 }
 
 .pending-overlay {
@@ -319,9 +337,61 @@ const handleClick = (artwork) => {
   color: #3d033d;
 }
 
-.public-hidden {
-  margin-left: 200px;
+.fav-icon {
+  margin-left: 15px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.5s ease;
+}
+
+.fav-icon:hover {
+  transform: scale(1.2);
+}
+
+.fav-icon.faved {
+  filter: none;
+}
+
+.badge-row {
+  display: flex;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.popular-badge {
   font-size: 15px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  color: rgb(3, 7, 235);
+  font-weight: bold;
+  box-shadow: 2px 5px 8px rgba(233, 11, 11, 0.8);
+}
+
+.popular-badge.yellow {
+  background: #f0ad4e;
+}
+
+.popular-badge.pink {
+  background: #ff69b4;
+}
+
+.popular-badge.purple {
+  background: #9b59b6;
+}
+
+.new-badge {
+  font-size: 15px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #ff4757;
+  color: white;
+  font-weight: bold;
+  box-shadow: 2px 5px 8px rgba(211, 6, 230, 0.8);
+}
+
+.public-hidden {
+  margin-left: auto;
+  font-size: 12px;
   color: #f53ef5;
 }
 </style>

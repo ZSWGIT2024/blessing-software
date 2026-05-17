@@ -80,186 +80,277 @@ const currentRoute = computed(() => route.path)
 const artworks = ref([
   {
     id: 1,
-    title: '樱花盛开',
-    artist: '自然之笔',
+    title: '加藤惠',
+    artist: '未知艺术家',
     image: '/images/x (1).jpg',
     year: '2023',
     category: '二次元',
-    description: '春日樱花盛开的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 2,
     title: '秋叶飘落',
-    artist: '自然之笔',
+    artist: '未知艺术家',
     image: '/images/x (1).png',
     year: '2023',
     category: '二次元',
-    description: '秋日落叶的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 3,
     title: '冬日雪景',
-    artist: '自然之笔',
+    artist: '未知艺术家',
     image: '/images/x (2).png',
     year: '2023',
     category: '二次元',
-    description: '冬日雪景的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 4,
     title: '星空夜',
-    artist: '星空艺术家',
+    artist: '未知艺术家',
     image: '/images/x (3).png',
     year: '2023',
     category: '二次元',
-    description: '星空下的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 5,
     title: '日出东方',
-    artist: '日出艺术家',
+    artist: '未知艺术家',
     image: '/images/x (4).png',
     year: '2023',
     category: '二次元',
-    description: '日出东方的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   // 可以添加更多艺术作品...
   {
     id: 6,
     title: '山水之间',
-    artist: '水墨大师',
+    artist: '未知艺术家',
     image: '/images/x (5).png',
     year: '2022',
     category: '二次元',
-    description: '传统山水画的现代诠释',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
 
     id: 7,
     title: '四季变化',
-    artist: '四季艺术家',
+    artist: '未知艺术家',
     image: '/images/x (6).png',
     year: '2022',
     category: '二次元',
-    description: '四季变化的美丽景象',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 8,
     title: '星空下的思考',
-    artist: '星空思考者',
+    artist: '未知艺术家',
     image: '/images/x (7).png',
     year: '2022',
     category: '二次元',
-    description: '星空下的思考与探索',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 9,
     title: '日出东方的希望',
-    artist: '日出希望者',
+    artist: '未知艺术家',
     image: '/images/x (8).png',
     year: '2022',
     category: '二次元',
-    description: '日出东方的美丽景象与希望',
+    description: '路人女主的养成方法',
     wall: 'left'
   },
   {
     id: 10,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (9).png',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
+    description: '路人女主的养成方法',
     wall: 'right'
   },
   {
     id: 10,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (10).png',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
+    description: '路人女主的养成方法',
     wall: 'right'
   },
   {
     id: 11,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (11).png',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
+    description: '路人女主的养成方法',
     wall: 'right'
   },
   {
     id: 12,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (12).png',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
+    description: '路人女主的养成方法',
     wall: 'right'
   },
   {
     id: 13,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (2).jpg',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
-    wall: 'right'
+    description: '路人女主的养成方法',
+    wall: 'left'
   },
   {
     id: 14,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (3).jpg',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
-    wall: 'right'
+    description: '路人女主的养成方法',
+    wall: 'left'
   },
   {
     id: 15,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (4).jpg',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
-    wall: 'right'
+    description: '路人女主的养成方法',
+    wall: 'left'
   },
   {
     id: 16,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (5).jpg',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
-    wall: 'right'
+    description: '路人女主的养成方法',
+    wall: 'left'
   },
   {
     id: 17,
     title: '山水之间的和谐',
-    artist: '山水和谐者',
+    artist: '未知艺术家',
     image: '/images/x (6).jpg',
     year: '2022',
     category: '二次元',
-    description: '山水之间的和谐与宁静',
+    description: '路人女主的养成方法',
+    wall: 'left'
+  },
+  {
+    id: 18,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (1).jpg',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
     wall: 'right'
-  }
+  },
+  {
+    id: 19,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (2).jpg',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 20,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (3).jpg',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 21,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (4).jpg',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 22,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (5).jpg',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 23,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (1).png',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 24,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (2).png',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 25,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (3).png',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+  {
+    id: 26,
+    title: '山水之间的和谐',
+    artist: '未知艺术家',
+    image: '/images/路人女主 (4).png',
+    year: '2022',
+    category: '二次元',
+    description: '路人女主的养成方法',
+    wall: 'right'
+  },
+
 ])
 //画廊页面的尝试代码
 // 处理点赞
@@ -439,7 +530,7 @@ const goBack = () => {
   left: 220px;
   /* 调整位置以适应侧边栏 */
   padding: 10px 15px;
-  background: rgba(236, 140, 199, 0.8);
+  background: linear-gradient(135deg, #fa94c3 0%, #50b9b4 100%);
   border: 1px solid #98e3f0;
   border-radius: 30px;
   cursor: pointer;
@@ -448,16 +539,18 @@ const goBack = () => {
   align-items: center;
   font-family: 'Noto Sans SC', sans-serif;
   transition: all 0.3s ease;
+  font-size: 0.7rem;
+  box-shadow: 0 2px 10px rgba(17, 236, 145, 0.8)
 }
 
 .back-button:hover {
-  background: white;
+  background: rgb(253, 170, 225);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .arrow-icon {
   margin-right: 5px;
-  font-size: 1.2rem;
+  font-size: 0.8rem;
 }
 
 .gallery-hall {

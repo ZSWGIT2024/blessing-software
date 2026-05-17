@@ -223,31 +223,7 @@
               <h4>表情包</h4>
             </div>
             
-            <!-- 表情包列表 -->
-            <div class="packs-list">
-              <div v-if="loading.packs" class="loading-state">
-                <span class="spinner"></span> 加载中...
-              </div>
-              
-              <div v-else class="packs-grid">
-                <div 
-                  v-for="pack in emojiPacks" 
-                  :key="pack.id"
-                  class="pack-card"
-                  @click="selectPack(pack)"
-                >
-                  <div class="pack-cover">
-                    <img :src="pack.coverUrl" :alt="pack.packName" />
-                  </div>
-                  <div class="pack-info">
-                    <div class="pack-name">{{ pack.packName }}</div>
-                    <div class="pack-count">{{ pack.itemCount }}个表情</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 表情包详情视图 -->
+ <!-- 表情包详情视图 -->
             <div v-if="selectedPack" class="pack-detail-view">
               <div class="pack-detail-header">
                 <button @click="selectedPack = null" class="back-btn">← 返回</button>
@@ -278,6 +254,30 @@
                     >
                       {{ item.isFavorite ? '★' : '☆' }}
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 表情包列表 -->
+            <div class="packs-list">
+              <div v-if="loading.packs" class="loading-state">
+                <span class="spinner"></span> 加载中...
+              </div>
+              
+              <div v-else class="packs-grid">
+                <div 
+                  v-for="pack in emojiPacks" 
+                  :key="pack.id"
+                  class="pack-card"
+                  @click="selectPack(pack)"
+                >
+                  <div class="pack-cover">
+                    <img :src="pack.coverUrl" :alt="pack.packName" />
+                  </div>
+                  <div class="pack-info">
+                    <div class="pack-name">{{ pack.packName }}</div>
+                    <div class="pack-count">{{ pack.itemCount }}个表情</div>
                   </div>
                 </div>
               </div>
@@ -426,7 +426,10 @@ const loadSystemEmojis = async (category) => {
   loading.value.systemEmojis = true
   try {
     const response = await emojiApi.getSystemEmojis(category)
-    systemEmojis.value = response.data
+    // 注入 type 和 isFavorite 字段
+    systemEmojis.value = (response.data || []).map(e => ({
+      ...e, type: 'emoji', isFavorite: e.isFavorite || false
+    }))
   } catch (error) {
     console.error('加载系统表情失败:', error)
   } finally {
@@ -580,7 +583,10 @@ const loadPackItems = async (packId) => {
   loading.value.packItems = true
   try {
     const response = await emojiApi.getEmojiPackItems(packId)
-    packItems.value = response.data
+    // 注入 type 和 isFavorite 字段
+    packItems.value = (response.data || []).map(item => ({
+      ...item, type: 'pack', isFavorite: item.isFavorite || false
+    }))
   } catch (error) {
     console.error('加载表情包详情失败:', error)
   } finally {
@@ -590,25 +596,16 @@ const loadPackItems = async (packId) => {
 
 // 切换表情包项收藏状态
 const togglePackItemFavorite = async (item) => {
+  const itemType = item.type || (item.imageUrl ? 'pack' : 'emoji')
   if (item.isFavorite) {
-    if (item.type === 'emoji') {
-      await removeFromFavorites({ ...item, type: 'emoji' })
-      item.isFavorite = false
-    } else {
-    await removeFromFavorites({ ...item, type: 'pack' })
+    await removeFromFavorites({ ...item, type: itemType })
     item.isFavorite = false
-    }
+    ElMessage.success('已取消收藏')
   } else {
-    if (item.type === 'emoji') {
-      await addToFavorites({ ...item, type: 'emoji' })
-      item.isFavorite = true
-    } else {
-      if (item.type === 'pack') {
-      await addToFavorites({ ...item, type: 'pack' })
-      item.isFavorite = true
-    }
+    await addToFavorites({ ...item, type: itemType })
+    item.isFavorite = true
+    ElMessage.success('已添加收藏')
   }
-}
 }
 
 // ==================== 选择事件 ====================

@@ -4,14 +4,11 @@ package com.itheima;
 import com.itheima.config.JwtProperties;
 import com.itheima.config.MediaProperties;
 import com.itheima.config.OssProperties;
-import com.itheima.config.UploadProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 import java.util.Arrays;
@@ -21,7 +18,6 @@ import java.util.Arrays;
 @SpringBootApplication
 @EnableConfigurationProperties({
         MediaProperties.class,
-        UploadProperties.class,
         OssProperties.class,
         JwtProperties.class
 })

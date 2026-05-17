@@ -443,6 +443,10 @@ const props = defineProps({
   userData: {
     type: Object,
     default: () => ({})
+  },
+  friendId: {
+    type: Number,
+    default: null  // 改为默认 null
   }
 })
 
@@ -509,7 +513,12 @@ const findAndSelectContact = (targetUser) => {
     return
   }
 
-  const userId = targetUser.userId
+  // UserDetail 传来的数据 id 字段存 userId，聊天列表用 userId
+  const userId = targetUser.userId || targetUser.id || props.friendId
+  if (!userId) {
+    console.warn('targetUser has no userId or id', targetUser)
+    return
+  }
 
   // 先在好友中查找
   let contact = friendContacts.value.find(c => c.userId === userId)
@@ -1203,6 +1212,7 @@ const uploadSingleFile = async (file, fileType) => {
   const uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
   const fileMessageId = currentUserId.value + '_' + activeContact.value.userId + '_' + Date.now()
 
+  const controller = new AbortController()
   uploadingFiles.value.push({
     id: uploadId,
     name: file.name,
@@ -1210,7 +1220,9 @@ const uploadSingleFile = async (file, fileType) => {
     progress: 0,
     status: 'uploading',
     error: null,
-    type: fileType
+    type: fileType,
+    fileObj: file,
+    controller
   })
 
   try {
@@ -1220,6 +1232,7 @@ const uploadSingleFile = async (file, fileType) => {
     formData.append('messageId', fileMessageId)
 
     const config = {
+      signal: controller.signal,
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
           const percentCompleted = Math.round(
@@ -1359,19 +1372,19 @@ const formatFileSize = (bytes) => {
 }
 
 const retryUpload = (file) => {
-  //判断文件大小是否超过10MB
   if (file.size > 10 * 1024 * 1024) {
     ElMessage.error('文件大小不能超过10MB')
     return
   }
-  console.log('重试上传:', file)
-  ElMessage.warning('正在尝试重新上传中...')
+  if (file.controller) { file.controller.abort(); file.controller = null }
+  ElMessage.warning('正在尝试重新上传...')
   uploadingFiles.value = uploadingFiles.value.filter(f => f.id !== file.id)
-  const fileObj = new File([], file.name, { type: file.type })
-  uploadSingleFile(fileObj, file.type)
+  const fo = file.fileObj || new File([], file.name, { type: file.type || 'application/octet-stream' })
+  if (fo.size > 0) uploadSingleFile(fo, file.type)
 }
 
 const cancelUpload = (file) => {
+  if (file.controller) file.controller.abort()
   const index = uploadingFiles.value.findIndex(f => f.id === file.id)
   if (index !== -1) {
     uploadingFiles.value.splice(index, 1)
@@ -1687,6 +1700,7 @@ watch(() => props.visible, (newVal) => {
 watch(() => props.targetUser, (newVal) => {
   console.log('targetUser changed:', newVal)
   if (visible.value && newVal) {
+    loadChatHistory()
     nextTick(() => {
       findAndSelectContact(newVal)
     })

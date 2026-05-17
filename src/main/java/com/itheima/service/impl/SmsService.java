@@ -1,5 +1,8 @@
 package com.itheima.service.impl;
 
+import com.aliyun.dysmsapi20170525.Client;
+import com.aliyun.dysmsapi20170525.models.SendSmsRequest;
+import com.aliyun.teaopenapi.models.Config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -59,27 +62,27 @@ public class SmsService {
         return true;
 
         // ========== 阿里云短信 SDK 接入代码（正式环境取消注释） ==========
-        // try {
-        //     com.aliyun.dysmsapi20170525.Client client = createClient();
-        //     com.aliyun.dysmsapi20170525.models.SendSmsRequest request =
-        //         new com.aliyun.dysmsapi20170525.models.SendSmsRequest()
-        //             .setPhoneNumbers(phone)
-        //             .setSignName(signName)
-        //             .setTemplateCode(templateCode)
-        //             .setTemplateParam("{\"code\":\"" + code + "\"}");
-        //     client.sendSms(request);
-        //     return true;
-        // } catch (Exception e) {
-        //     log.error("阿里云短信发送失败: phone={}", phone, e);
-        //     return false;
-        // }
+//         try {
+//             Client client = createClient();
+//             SendSmsRequest request = new SendSmsRequest()
+//                     .setPhoneNumbers(phone)
+//                     .setSignName(signName)
+//                     .setTemplateCode(templateCode)
+//                     .setTemplateParam("{\"code\":\"" + code + "\"}");
+//             client.sendSms(request);
+//             return true;
+//         } catch (Exception e) {
+//             log.error("阿里云短信发送失败: phone={}", phone, e);
+//             return false;
+//         }
+//    }
+//
+//     private Client createClient() throws Exception {
+//         Config config = new Config()
+//             .setAccessKeyId(accessKeyId)
+//             .setAccessKeySecret(accessKeySecret);
+//         config.endpoint = "dysmsapi.aliyuncs.com";
+//         return new Client(config);
+//     }
     }
-
-    // private com.aliyun.dysmsapi20170525.Client createClient() throws Exception {
-    //     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config()
-    //         .setAccessKeyId(accessKeyId)
-    //         .setAccessKeySecret(accessKeySecret);
-    //     config.endpoint = "dysmsapi.aliyuncs.com";
-    //     return new com.aliyun.dysmsapi20170525.Client(config);
-    // }
 }

@@ -101,6 +101,8 @@ yarn-error.log
 .credentials
 .env
 .env.local
+frontend/public/
+frontend/src/assets/
 
 # ========== 其他 ==========
 *.zip

@@ -1,6 +1,6 @@
 <template>
   <div class="content-section sakura-bg">
-    <h2>🌸 隐私设置</h2>
+    <h2>🌸 个性设置</h2>
     <div class="privacy-settings">
       <div class="setting-section">
         <h3>个人资料可见性</h3>
@@ -25,34 +25,9 @@
       <div class="setting-section">
         <h3>消息设置</h3>
         <div class="setting-item">
-          <div class="setting-label">接收私信</div>
-          <label class="switch">
-            <input type="checkbox" v-model="privacy.allowPrivateMessages">
-            <span class="slider round"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-label">接收陌生人消息</div>
+          <div class="setting-label">接收陌生人私信</div>
           <label class="switch">
             <input type="checkbox" v-model="privacy.allowStrangerMessages">
-            <span class="slider round"></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="setting-section">
-        <h3>数据权限</h3>
-        <div class="setting-item">
-          <div class="setting-label">允许个性化推荐</div>
-          <label class="switch">
-            <input type="checkbox" v-model="privacy.allowPersonalization">
-            <span class="slider round"></span>
-          </label>
-        </div>
-        <div class="setting-item">
-          <div class="setting-label">允许数据分析</div>
-          <label class="switch">
-            <input type="checkbox" v-model="privacy.allowDataAnalysis">
             <span class="slider round"></span>
           </label>
         </div>
@@ -68,18 +43,15 @@ export default {
   data() {
     return {
       privacy: {
-        profileVisibility: 'friends',
-        postVisibility: 'friends',
-        allowPrivateMessages: true,
-        allowStrangerMessages: false,
-        allowPersonalization: true,
-        allowDataAnalysis: false
+        profileVisibility: 'public',
+        postVisibility: 'public',
+        allowStrangerMessages: true
       }
     }
   },
   methods: {
     saveSettings() {
-      alert('隐私设置已保存！')
+      alert('个性设置已保存！')
     }
   }
 }

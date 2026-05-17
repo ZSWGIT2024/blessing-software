@@ -18,7 +18,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         //登录和注册不需要拦截
         registry.addInterceptor(loginInterceptor)
-                .excludePathPatterns("/user/register", "/user/login", "/user/loginByCode",
-                        "/user/sendSMSCode", "/user/refreshToken", "/admin/health");
+                .excludePathPatterns("/user/register", "/user/login", "/user/loginByCode", "/user/captcha",
+                        "/user/sendSMSCode", "/user/refreshToken");
     }
 }

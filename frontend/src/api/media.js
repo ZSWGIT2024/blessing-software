@@ -1,7 +1,11 @@
-//导入request.js文件
 import request from '@/utils/requests'
 
-// 批量上传接口
+// 两阶段提交：AI作品上传到OSS后批量提交元数据写入DB
+export const batchMediaService = (items) => {
+  return request.post('/media/batch', { items })
+}
+
+// 批量上传接口（旧版，保留兼容）
 export const uploadMediaService = (formData) => {
   return request.post('/media/batch-upload', formData, {
     headers: {
@@ -210,9 +214,9 @@ export const batchUpdateMediaStatusService = (ids, status, tags) => {
     config.params.tags = tags
   }
   
-  console.log('请求配置:', config)
-  console.log('请求URL:', `${config.url}?${new URLSearchParams(config.params).toString()}`)
-  console.log('请求体:', config.data)
+  // console.log('请求配置:', config)
+  // console.log('请求URL:', `${config.url}?${new URLSearchParams(config.params).toString()}`)
+  // console.log('请求体:', config.data)
   
   return request(config)
 }

@@ -755,6 +755,7 @@ public class SocialServiceImpl implements SocialService {
             // 9. 清除缓存
             cacheService.evictRecentChatsCache(senderId);
             cacheService.evictRecentChatsCache(receiverId);
+            cacheService.evictAllChatMessagesCache(senderId, receiverId);
 
             // 10. 返回结果
             Map<String, Object> resultMap = new HashMap<>();

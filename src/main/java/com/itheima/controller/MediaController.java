@@ -3,8 +3,10 @@ package com.itheima.controller;
 import com.itheima.dto.MediaQueryDTO;
 import com.itheima.dto.MediaUpdateDTO;
 import com.itheima.dto.MediaUploadDTO;
+import com.itheima.dto.SubmitBatchRequest;
 import com.itheima.pojo.UserMedia;
 import com.itheima.utils.IpUtil;
+import com.itheima.utils.ThreadLocalUtil;
 import com.itheima.vo.MediaVO;
 import com.itheima.pojo.PageBean;
 import com.itheima.service.MediaService;
@@ -27,6 +29,25 @@ import java.util.List;
 public class MediaController {
 
     private final MediaService mediaService;
+
+    /**
+     * 批量提交AI作品（两阶段上传的第二阶段：元数据写入user_media表）
+     * POST /api/media/batch
+     */
+    @PostMapping("/batch")
+    public Result<List<MediaVO>> batchSubmit(@RequestBody SubmitBatchRequest request,
+                                              HttpServletRequest httpRequest) {
+        try {
+            String clientIp = IpUtil.getClientIp(httpRequest);
+            request.setUploadIp(clientIp);
+            Integer userId = (Integer) ThreadLocalUtil.get().get("id");
+            List<MediaVO> vos = mediaService.batchSubmit(userId, request);
+            return Result.success(vos);
+        } catch (Exception e) {
+            log.error("批量提交AI作品失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
 
     /**
      * 批量上传媒体文件

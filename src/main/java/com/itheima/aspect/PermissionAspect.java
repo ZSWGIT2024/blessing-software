@@ -1,9 +1,8 @@
 package com.itheima.aspect;
 
-import com.itheima.annotation.RequireAdmin;
 import com.itheima.annotation.RequirePermission;
 import com.itheima.exception.PermissionDeniedException;
-import com.itheima.service.PermissionService;
+import com.itheima.service.impl.PermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;

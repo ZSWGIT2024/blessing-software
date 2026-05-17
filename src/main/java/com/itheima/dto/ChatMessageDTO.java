@@ -17,6 +17,7 @@ public class ChatMessageDTO {
     private String content;
     private String status; // sending/sent/failed/read/withdrawn
     private Boolean isRead;
+    private Boolean offline; // 标记是否为离线消息
     private LocalDateTime createTime;
     private Long fileId; // 关联的文件ID
 

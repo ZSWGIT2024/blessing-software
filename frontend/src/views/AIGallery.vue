@@ -1,4 +1,4 @@
-<template>
+A<template>
   <div class="gallery-container">
     <!-- 顶部装饰标题 -->
     <div class="gallery-header">
@@ -280,9 +280,11 @@ const uploadAIArt = () => {
 }
 
 // 上传成功处理（保持原样，新增作品放在第一页）
+const getRandomWall = () => Math.random() > 0.5 ? 'left' : 'right'
+
 const handleUploadSuccess = (newMedia) => {
   const newMedias = Array.isArray(newMedia) ? newMedia : [newMedia]
-  
+
   newMedias.forEach(media => {
     mediaList.value = [{
       id: media.id,
@@ -404,7 +406,6 @@ const fetchMediaList = async () => {
     const response = await getMediaListService(params)
     
     if (response.code === 0) {
-      console.log('获取所有用户AI作品数据信息response', response.data)
       
       // 更新分页信息
       totalItems.value = response.data?.total || 0
@@ -498,7 +499,7 @@ const filteredImageList = computed(() => {
 // 打开查看器
 const openLightbox = (media) => {
   if (media.status === 'pending') {
-    ElMessage.warning('该作品正在生成中，请稍后查看')
+    ElMessage.warning('该作品正在审核中，请稍后查看')
     return
   }
   

@@ -7,7 +7,7 @@
       <button class="nav-button next-button" @click="nextImage">❯</button>
       <div class="lightbox-info">
         <h2>作品标题: {{ currentImage.title }}</h2>
-        <p class="artist">作者: {{ userStore.currentUser.username }}</p>
+        <p class="artist">作者: {{currentImage.artist || userStore.currentUser.username }}</p>
         <p class="description">作品描述: {{ currentImage.description }}</p>
         <!-- 切换按钮 -->
         <button v-if="currentImage.userId === userStore.currentUser.id" class="detail-toggle-button" @click="showDetails = !showDetails">

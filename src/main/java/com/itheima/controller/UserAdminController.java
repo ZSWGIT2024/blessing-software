@@ -3,7 +3,7 @@ package com.itheima.controller;
 import com.itheima.common.UserConstant;
 import com.itheima.pojo.Result;
 import com.itheima.pojo.User;
-import com.itheima.service.LoginSecurityService;
+import com.itheima.service.impl.LoginSecurityService;
 import com.itheima.service.UserService;
 import com.itheima.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Max;
@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

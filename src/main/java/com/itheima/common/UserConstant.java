@@ -15,6 +15,7 @@ public class UserConstant {
     // 账号状态
     public static final String STATUS_ACTIVE = "active";
     public static final String STATUS_BANNED = "banned";
+    public static final String STATUS_MUTED = "muted";
     //是否在线
     public static final String ONLINE = "online";
     public static final String OFFLINE = "offline";
@@ -159,6 +160,24 @@ public class UserConstant {
             return actions;
         }
     }
+
+    // ===== 群聊限制配置 =====
+    public static final int MAX_GROUPS_NORMAL = 5;       // 普通用户最多创建5个群
+    public static final int MAX_GROUPS_VIP = 20;         // VIP最多创建20个群
+    public static final int GROUP_MAX_MEMBERS = 200;     // 群最大成员数
+    public static final int GROUP_MIN_MEMBERS = 3;       // 群最小成员数（低于此数自动解散）
+    public static final int WORLD_CHAT_RATE_LIMIT = 5;   // 世界聊天每分钟5条
+    public static final int GROUP_CHAT_RATE_LIMIT = 30;  // 群聊每分钟30条
+
+    // 群成员角色
+    public static final String GROUP_ROLE_OWNER = "owner";
+    public static final String GROUP_ROLE_ADMIN = "admin";
+    public static final String GROUP_ROLE_MEMBER = "member";
+
+    // 群加入权限
+    public static final String GROUP_JOIN_ANYONE = "anyone";
+    public static final String GROUP_JOIN_APPROVAL = "approval";
+    public static final String GROUP_JOIN_INVITE = "invite";
 
     // ===== 上传限制配置 =====
     public static int DAILY_UPLOAD_COUNT_NORMAL = 20;

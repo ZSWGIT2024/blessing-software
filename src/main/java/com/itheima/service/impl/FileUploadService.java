@@ -2,8 +2,10 @@ package com.itheima.service.impl;
 
 
 import com.itheima.dto.ChatFileDTO;
+import com.itheima.mapper.GroupChatFileMapper;
 import com.itheima.mapper.SocialMapper;
 import com.itheima.pojo.ChatFile;
+import com.itheima.pojo.GroupChatFile;
 import com.itheima.pojo.PageBean;
 import com.itheima.pojo.Result;
 import com.itheima.service.impl.SensitiveFilterService;
@@ -33,12 +35,13 @@ public class FileUploadService {
     @Value("${upload.storage.type:oss}")  // 从配置读取存储类型
     private String storageType;
 
-    @Value("${upload.max-size.chat:10485760}") // 聊天文件最大10MB
+    @Value("${upload.chat.max-size:10485760}") // 聊天文件最大10MB
     private long maxFileSize;
 
     private final SocialMapper socialMapper;
+    private final GroupChatFileMapper groupChatFileMapper;
     private final SensitiveFilterService sensitiveFilterService;
-    private final AliOssUtil aliOssUtil;  // 注入已有的AliOssUtil
+    private final AliOssUtil aliOssUtil;
 
     /**
      * 上传聊天文件（整合OSS）
@@ -86,7 +89,7 @@ public class FileUploadService {
             chatFile.setFilePath(fileUrl); // 存储完整的URL或相对路径
             chatFile.setFileType(fileType);
             chatFile.setFileSize(file.getSize());
-            chatFile.setThumbnailPath(thumbnailUrl == null ? fileUrl : thumbnailUrl);
+            chatFile.setThumbnailPath(thumbnailUrl);
             chatFile.setMessageId(messageId);
             chatFile.setCreateTime(LocalDateTime.now());
 
@@ -186,6 +189,107 @@ public class FileUploadService {
 
     }
 
+    /**
+     * 上传群组/世界聊天文件（无需receiverId）
+     */
+    public Result<ChatFileDTO> uploadGroupFile(MultipartFile file,
+                                               Integer uploaderId,
+                                               String groupId,
+                                               String chatType,
+                                               String messageId) {
+        try {
+            if (file.getSize() > maxFileSize) {
+                return Result.error("文件大小不能超过 " + (maxFileSize / 1024 / 1024) + "MB");
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                return Result.error("文件名不能为空");
+            }
+
+            String filteredName = sensitiveFilterService.filter(originalFilename);
+            if (filteredName == null) {
+                return Result.error("文件名包含敏感词");
+            }
+
+            String fileUrl;
+            String thumbnailUrl = null;
+            String fileType = getFileType(file.getContentType(), originalFilename);
+
+            if ("oss".equals(storageType)) {
+                fileUrl = uploadToOSS(file, fileType, filteredName);
+                thumbnailUrl = fileUrl;
+            } else {
+                return Result.error("不支持的存储类型");
+            }
+
+            GroupChatFile gf = new GroupChatFile();
+            gf.setUploaderId(uploaderId);
+            gf.setGroupId(groupId);
+            gf.setChatType(chatType);
+            gf.setFileName(filteredName);
+            gf.setFilePath(fileUrl);
+            gf.setFileType(fileType);
+            gf.setFileSize(file.getSize());
+            gf.setThumbnailPath(thumbnailUrl);
+            gf.setMessageId(messageId);
+            gf.setIsDeleted(false);
+
+            groupChatFileMapper.insert(gf);
+
+            ChatFileDTO dto = new ChatFileDTO();
+            dto.setId(gf.getId());
+            dto.setUploaderId(uploaderId);
+            dto.setFileName(filteredName);
+            dto.setFileUrl(fileUrl);
+            dto.setFileType(fileType);
+            dto.setFileSize(formatFileSize(file.getSize()));
+            dto.setThumbnailUrl(thumbnailUrl);
+            dto.setMessageId(messageId);
+            dto.setCreateTime(gf.getCreateTime());
+
+            return Result.success(dto);
+
+        } catch (Exception e) {
+            log.error("群组文件上传失败", e);
+            return Result.error("文件上传失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取群组聊天文件列表
+     */
+    public Result<List<GroupChatFile>> getGroupFiles(String groupId, Integer pageNum, Integer pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<GroupChatFile> files = groupChatFileMapper.selectByGroup(groupId, offset, pageSize);
+        return Result.success(files);
+    }
+
+    /**
+     * 获取世界聊天文件列表
+     */
+    public Result<List<GroupChatFile>> getWorldFiles(Integer uploaderId, Integer pageNum, Integer pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<GroupChatFile> files = groupChatFileMapper.selectByUploader(uploaderId, offset, pageSize);
+        return Result.success(files);
+    }
+
+    /**
+     * 删除群组聊天文件
+     */
+    @Transactional
+    public Result<?> deleteGroupFile(Long fileId, Integer userId) {
+        GroupChatFile file = groupChatFileMapper.selectById(fileId);
+        if (file == null) {
+            return Result.error("文件不存在");
+        }
+        if (!file.getUploaderId().equals(userId)) {
+            return Result.error("无权删除此文件");
+        }
+        groupChatFileMapper.softDelete(fileId);
+        return Result.success();
+    }
+
     // ==================== 辅助方法 ====================
 
     private String getFileType(String contentType, String fileName) {
@@ -223,10 +327,6 @@ public class FileUploadService {
     private String getFileExtension(String fileName) {
         int dotIndex = fileName.lastIndexOf('.');
         return dotIndex == -1 ? "" : fileName.substring(dotIndex + 1);
-    }
-
-    private boolean isImage(String fileType) {
-        return "image".equals(fileType);
     }
 
 
