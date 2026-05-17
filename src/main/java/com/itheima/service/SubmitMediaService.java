@@ -3,6 +3,7 @@ package com.itheima.service;
 import com.itheima.dto.MediaQueryDTO;
 import com.itheima.dto.MediaUpdateDTO;
 import com.itheima.dto.MediaUploadDTO;
+import com.itheima.dto.SubmitBatchRequest;
 import com.itheima.pojo.PageBean;
 import com.itheima.pojo.UserMedia;
 import com.itheima.vo.MediaVO;
@@ -56,4 +57,11 @@ public interface SubmitMediaService {
     //查询用户最近上传
     List<UserMedia> getRecentMedia(Integer userId, Integer limit);
 
+    /**
+     * 批量提交已上传的媒体文件（两阶段提交的第二阶段：写入DB）
+     * @param userId 用户ID
+     * @param request 批量提交请求（含已上传的URL列表和元数据）
+     * @return 提交成功的媒体VO列表
+     */
+    List<MediaVO> batchSubmit(Integer userId, SubmitBatchRequest request);
 }

@@ -21,10 +21,6 @@ public interface ChatFileMapper {
             "values(#{uploaderId},#{receiverId},#{fileName},#{filePath},#{fileType},#{fileSize},#{thumbnailPath},#{messageId},now(),now())")
     void insert(ChatFile chatFile);
 
-    //更新消息ID
-    @Update("update chat_file set message_id = #{messageId} where id = #{id}")
-    void updateMessageId(@Param("id") Long id,@Param("messageId") String messageId);
-
     @Delete("delete from chat_file where message_id = #{messageId}")
     void deleteByMessageId(String messageId);
 }

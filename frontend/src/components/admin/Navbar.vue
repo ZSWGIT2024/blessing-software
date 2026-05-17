@@ -76,6 +76,16 @@
           <h3><i class="iconfont icon-record"></i> 登录记录</h3>
           <LoginRecords />
         </div>
+
+        <div v-if="activeMenu === 'system-messages'" class="content-section">
+          <h3><i class="iconfont icon-message"></i> 系统消息管理</h3>
+          <SystemMessageManagement />
+        </div>
+
+        <div v-if="activeMenu === 'feedback'" class="content-section">
+          <h3><i class="iconfont icon-feedback"></i> 用户反馈</h3>
+          <FeedbackManagement />
+        </div>
       </div>
     </div>
   </div>
@@ -93,6 +103,8 @@ import EmojiManagement from '@/components/admin/EmojiManagement.vue'
 import Dashboard from '@/components/admin/Dashboard.vue'
 import OperationLogs from '@/components/admin/OperationLogs.vue'
 import LoginRecords from '@/components/admin/LoginRecords.vue'
+import SystemMessageManagement from '@/components/SystemMessageManagement.vue'
+import FeedbackManagement from '@/components/admin/FeedbackManagement.vue'
 
 const user = useUserInfoStore()
 const route = useRoute()
@@ -218,7 +230,9 @@ const menuItems = [
   { path: 'settings', title: '会员管理', icon: 'icon-setting' },
   { path: 'dashboard', title: '系统仪表盘', icon: 'icon-dashboard' },
   { path: 'logs/operation', title: '操作日志', icon: 'icon-log' },
-  { path: 'logs/login', title: '登录记录', icon: 'icon-record' }
+  { path: 'logs/login', title: '登录记录', icon: 'icon-record' },
+  { path: 'system-messages', title: '系统消息管理', icon: 'icon-message' },
+  { path: 'feedback', title: '用户反馈', icon: 'icon-feedback' }
 ]
 
 const closeWindow = () => {

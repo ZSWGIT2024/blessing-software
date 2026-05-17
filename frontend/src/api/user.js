@@ -12,14 +12,24 @@ export const userRegisterService = (registerData) => {
   return request.post('/user/register', params);
 }
 
-//提供调用根据用户名和密码登录接口的方法
+//提供调用根据用户名和密码登录接口的方法（支持手机号或邮箱）
 export const userLoginService = (loginData) => {
-  //借助于urlsearchparams对象，将params对象中的参数转换为url编码的字符串
   const params = new URLSearchParams()
-  for (let key in loginData) {
-    params.append(key, loginData[key]);
-  }
+  params.append('account', loginData.account);
+  params.append('password', loginData.password);
+  if (loginData.captchaUuid) params.append('captchaUuid', loginData.captchaUuid);
+  if (loginData.captchaCode) params.append('captchaCode', loginData.captchaCode);
   return request.post('/user/login', params);
+}
+
+//获取图形验证码
+export const getCaptchaService = () => {
+  return request.get('/user/captcha');
+}
+
+//用户退出登录的方法
+export const userLogoutService = () => {
+  return request.post('/user/logout');
 }
 
 //提供调用根据用户名和验证码登录接口的方法
@@ -31,10 +41,10 @@ export const userLoginByCodeService = (loginData) => {
   return request.post('/user/loginByCode', params)
 }
 
-//提供调用发送短信验证码接口的方法
-export const sendSMSCodeService = (phone, type = 'login') => {
+//提供调用发送短信/邮箱验证码接口的方法（target为手机号或邮箱）
+export const sendSMSCodeService = (target, type = 'login') => {
   return request.post('/user/sendSMSCode',
-    new URLSearchParams({ phone, type }),
+    new URLSearchParams({ target, type }),
     {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
@@ -85,6 +95,13 @@ export const useUpdatePasswordService = (params) => {
 export function getArticleList() {
   //同步等待服务器响应的结果，并返回。async函数会等待await后面的Promise对象执行完，并返回结果
   return request.get('/article/getAll');
+}
+
+// 检查用户名是否可用
+export const checkUsernameService = (username, excludeUserId) => {
+  const params = { username }
+  if (excludeUserId != null) params.excludeUserId = excludeUserId
+  return request.get('/user/checkUsername', { params })
 }
 
 //定义一个方法，用来发送异步请求，获取条件搜索的文章列表

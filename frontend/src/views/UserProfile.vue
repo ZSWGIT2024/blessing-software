@@ -15,9 +15,9 @@
         </div>
         <!-- 新增：头像下方的等级和进度条容器 -->
         <div class="level-container">
-          <div class="profile-gender">{{ userInfoStore.currentUser.gender == '男' ? '♂' : '♀' }}</div>
-          <div class="level-display">Lv{{ userInfoStore.currentUser.level || '1' }}</div>
-          <div class="exp-display">
+          <div class="profile-gender" title="性别">{{ userInfoStore.currentUser.gender == '男' ? '♂' : '♀' }}</div>
+          <div class="level-display" title="等级">Lv{{ userInfoStore.currentUser.level || '1' }}</div>
+          <div class="exp-display" title="当前经验">
             {{ currentExp }}/{{ currentExp > nextLevelExp ? '∞' : nextLevelExp }} ({{ expPercentage > 100 ? '100' : expPercentage }}%)
           </div>
           <div class="exp-bar">
@@ -53,9 +53,7 @@
           </el-tabs>
         </el-dialog>
 
-
         <div>
-          
           <h3>
           <span class="vip-type" v-if="userInfoStore.currentUser.vipType == 1 " title="月度VIP">月VIP</span>
           <span class="vip-type" v-else-if="userInfoStore.currentUser.vipType == 2" title="季度VIP">季VIP</span>
@@ -67,6 +65,8 @@
           </h3>
           <p>昵称：
           <span class="nickname-span" title="昵称">{{ userInfoStore.currentUser.nickname || '未命名昵称' }}</span></p>
+          <p>IP属地：
+          <span class="ip-location-span" title="IP属地">{{ userInfoStore.currentUser.registerLocation || userInfoStore.currentUser.lastLoginLocation }}</span></p>
           <button v-if="isCurrentUser" class="edit-btn" @click.prevent="handleEditProfile">编辑资料</button>
           <div class="profile-actions">
             <button v-if="!isCurrentUser" @click="handleFriendAction" :class="friendStatus">
@@ -89,6 +89,14 @@
           <span class="value">{{ userInfoStore.currentUser.birthday?.substring(5, 10) || '未填写' }}</span>
         </div>
         <div class="detail-item">
+          <span class="label">手机号码:</span>
+          <span class="value">{{ userInfoStore.currentUser.phone || '未填写' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">邮箱地址:</span>
+          <span class="value">{{ userInfoStore.currentUser.email || '未填写' }}</span>
+        </div>
+        <div class="detail-item">
           <span class="label">兴趣爱好:</span>
           <span class="value">{{ userInfoStore.currentUser.hobbies || '未填写' }}</span>
         </div>
@@ -103,6 +111,10 @@
         <div class="detail-item">
           <span class="label">星座:</span>
           <span class="value">{{ userInfoStore.currentUser.constellation || '未填写' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">总登录天数:</span>
+          <span class="value">{{ userInfoStore.currentUser.totalLoginDays || '未填写' }}</span>
         </div>
         <div class="detail-item">
           <span class="label">注册时间:</span>
@@ -142,7 +154,7 @@
     </el-form-item>
     <el-form-item label="大好物：" prop="favoriteThings">
       <el-input v-model="userInfo.favoriteThings" style="width: 340px" :rows="5" type="textarea"
-        placeholder="请输入小可爱的最爱❤" />
+        placeholder="请输入你的最爱❤" />
     </el-form-item>
     <el-form-item label="血型：" prop="bloodType">
       <el-select v-model="userInfo.bloodType" placeholder="请选择血型">
@@ -262,13 +274,11 @@ const loadAllFrames = async () => {
     }
   } catch (error) {
     console.error('获取头像框失败:', error)
-    ElMessage.error('获取头像框失败')
   }
 }
 
 // 更换头像框
 const selectFrame = async (frame) => {
-  await unlockFrame(frame)
   if (!frame.unlocked) {
     ElMessage.warning(getUnlockRequirement(frame))
     return
@@ -533,10 +543,27 @@ const cancelForm = () => {
   text-shadow: 2px 2px 4px rgba(234, 104, 252, 0.8);
   user-select: none;
 }
+p {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  font-style: italic;
+  font-weight: bold;
+  color: rgb(233, 129, 193);
+  text-shadow: 2px 2px 4px rgba(119, 235, 225, 0.7);
+  user-select: none;
+}
+
 .nickname-span {
   color: #8a99eb;
   margin: 0 0 10px;
   font-size: 16px;
+}
+.ip-location-span {
+  color: #07aa3d;
+  border-radius: 35%;
+  margin: 0 0 10px;
+  font-size: 13px;
 }
 
 .online-dot {
@@ -565,10 +592,10 @@ const cancelForm = () => {
 
 /* 头像 */
 .profile-avatar {
-  width: 75%;
-  height: 75%;
-  margin-left: 19px;
-  margin-top: 2px;
+  width: 70%;
+  height: 70%;
+  margin-left: 23px;
+  margin-top: 8px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -637,6 +664,13 @@ const cancelForm = () => {
   color: #ff69b4;
   border: 1px solid #ff69b4;
 }
+
+.profile-details {
+  max-height: 450px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
 
 .detail-item {
   display: flex;

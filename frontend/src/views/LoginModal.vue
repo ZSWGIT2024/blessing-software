@@ -1,149 +1,138 @@
 <template>
   <div class="auth-container" v-if="visible" ref="draggableContainer">
-    <div class="box" @mousedown="startDrag">
-      <div class="left"></div>
-      <!-- 在登录表单部分，h4标题下面添加登录方式切换 -->
-      <div class="right">
-        <h4>{{ isRegister ? '注册' : '登录' }}</h4>
+      <div class="box" @mousedown="startDrag">
+        <div class="left"></div>
+        <div class="right">
+          <h4>{{ isRegister ? '注册' : '登录' }}</h4>
 
-        <!-- 添加登录方式切换按钮（仅登录页面显示） -->
-        <div class="login-method-toggle" v-if="!isRegister">
-          <button class="method-btn" :class="{ active: loginMethod === 'password' }" @click="loginMethod = 'password'">
-            密码登录
-          </button>
-          <button class="method-btn" :class="{ active: loginMethod === 'code' }" @click="loginMethod = 'code'">
-            验证码登录
-          </button>
-        </div>
-
-        <!-- 登录表单 -->
-        <form @submit.prevent="submitForm" v-if="!isRegister">
-          <!-- 手机号输入框 -->
-          <div class="input-group">
-            <input class="acc" type="tel" placeholder="请输入手机号" v-model="loginForm.phone" @blur="validatePhone('login')">
-            <span class="iconfont icon-zhanghao"></span>
-            <div v-if="errors.login.phone" class="error-message">{{ errors.login.phone }}</div>
-          </div>
-
-          <!-- 密码登录方式 -->
-          <div class="input-group" v-if="loginMethod === 'password'">
-            <input class="acc" :type="showLoginPassword ? 'text' : 'password'" placeholder="请输入密码"
-              v-model="loginForm.password">
-            <span class="iconfont icon-jiesuo"></span>
-            <span class="iconfont password-toggle" :class="showLoginPassword ? 'icon-kejian' : 'icon-bukejian'"
-              @click="showLoginPassword = !showLoginPassword"></span>
-            <div v-if="errors.login.password" class="error-message">{{ errors.login.password }}</div>
-          </div>
-
-          <!-- 验证码登录方式 -->
-          <VerificationCode v-if="loginMethod === 'code'" v-model="loginForm.code" :phone="loginForm.phone"
-            :is-login="true" @update:phone="handlePhoneUpdate" />
-
-          <button class="Login" type="submit" value="登录" @click="loginBtn">登录</button>
-
-          <UserAgreement v-model="agreementChecked" />
-          <SocialLogin />
-        </form>
-
-        <!-- 注册表单 -->
-        <form @submit.prevent="submitForm" v-else>
-          <div class="input-group">
-            <input class="acc" type="tel" placeholder="请输入手机号" v-model="registerForm.phone"
-              @blur="validatePhone('register')">
-            <span class="iconfont icon-zhanghao"></span>
-            <div v-if="errors.register.phone" class="error-message">{{ errors.register.phone }}</div>
-          </div>
-
-          <!-- 注册表单的密码输入框 -->
-          <div class="input-group">
-            <input class="acc" :type="showRegisterPassword ? 'text' : 'password'" placeholder="请输入密码"
-              v-model="registerForm.password" @blur="validatePassword">
-            <span class="iconfont icon-jiesuo"></span>
-            <span class="iconfont password-toggle" :class="showRegisterPassword ? 'icon-kejian' : 'icon-bukejian'"
-              @click="showRegisterPassword = !showRegisterPassword"></span>
-            <div v-if="errors.register.password" class="error-message">{{ errors.register.password }}</div>
-          </div>
-
-          <!-- 注册表单的确认密码输入框 -->
-          <div class="input-group">
-            <input class="acc" :type="showConfirmPassword ? 'text' : 'password'" placeholder="请确认密码"
-              v-model="registerForm.confirmPassword" @blur="validateConfirmPassword">
-            <span class="iconfont icon-jiesuo"></span>
-            <span class="iconfont password-toggle" :class="showConfirmPassword ? 'icon-kejian' : 'icon-bukejian'"
-              @click="showConfirmPassword = !showConfirmPassword"></span>
-            <div v-if="errors.register.confirmPassword" class="error-message">{{ errors.register.confirmPassword }}
-            </div>
-          </div>
-          <div class="code-group">
-            <input class="acc" type="text" placeholder="请输入验证码" v-model="registerForm.code">
-            <button class="send-btn" :disabled="isCounting || !isPhoneValid" @click="sendCode">
-              {{ countdown > 0 ? `${countdown}s后重发` : '获取验证码' }}
+          <!-- 登录方式切换按钮（仅登录页面显示） -->
+          <div class="login-method-toggle" v-if="!isRegister">
+            <button class="method-btn" :class="{ active: loginMethod === 'password' }" @click="loginMethod = 'password'">
+              密码登录
             </button>
-            <div v-if="errors.register.code" class="error-message">{{ errors.register.code }}</div>
+            <button class="method-btn" :class="{ active: loginMethod === 'code' }" @click="loginMethod = 'code'">
+              验证码登录
+            </button>
           </div>
 
-          <UserAgreement v-model="agreementChecked" />
+          <!-- 登录表单 -->
+          <form @submit.prevent="submitForm" v-if="!isRegister">
+            <div class="input-group">
+              <input class="acc" type="text" placeholder="请输入手机号或邮箱" v-model="loginForm.account" @blur="validateAccount('login')">
+              <span class="iconfont icon-zhanghao"></span>
+              <div v-if="errors.login.account" class="error-message">{{ errors.login.account }}</div>
+            </div>
 
-          <button class="Login" type="submit" value="注册" @click="registerBtn">注册</button>
-        </form>
+            <div class="input-group" v-if="loginMethod === 'password'">
+              <input class="acc" :type="showLoginPassword ? 'text' : 'password'" placeholder="请输入密码"
+                v-model="loginForm.password">
+              <span class="iconfont icon-jiesuo"></span>
+              <span class="iconfont password-toggle" :class="showLoginPassword ? 'icon-kejian' : 'icon-bukejian'"
+                @click="showLoginPassword = !showLoginPassword"></span>
+              <div v-if="errors.login.password" class="error-message">{{ errors.login.password }}</div>
+            </div>
 
-        <div class="fn">
-          <a href="#" @click.prevent="toggleForm">{{ isRegister ? '已有账号？登录' : '注册账号' }}</a>
-           <a v-if="!isRegister" href="#" @click.prevent="showForgotPassword">忘记密码？</a>
+            <!-- 图形验证码 -->
+            <div class="input-group" v-if="showCaptcha">
+              <input class="acc captcha-input" type="text" placeholder="请输入图形验证码" v-model="loginForm.captchaCode" maxlength="4">
+              <img :src="captchaImage" @click="refreshCaptcha" class="captcha-img" title="点击刷新验证码" alt="验证码">
+              <div v-if="errors.login.captcha" class="error-message">{{ errors.login.captcha }}</div>
+            </div>
+
+            <VerificationCode v-if="loginMethod === 'code'" v-model="loginForm.code" :account="loginForm.account"
+              :is-login="true" @update:account="handleAccountUpdate" />
+
+            <button class="Login" type="submit" value="登录" @click="loginBtn">登录</button>
+
+            <UserAgreement v-model="agreementChecked" />
+            <!-- <SocialLogin /> -->
+          </form>
+
+          <!-- 注册表单 -->
+          <form @submit.prevent="submitForm" v-else>
+            <div class="input-group">
+              <input class="acc" type="text" placeholder="请输入手机号或邮箱" v-model="registerForm.account"
+                @blur="validateAccount('register')">
+              <span class="iconfont icon-zhanghao"></span>
+              <div v-if="errors.register.account" class="error-message">{{ errors.register.account }}</div>
+            </div>
+
+            <div class="input-group">
+              <input class="acc" :type="showRegisterPassword ? 'text' : 'password'" placeholder="请输入密码"
+                v-model="registerForm.password" @blur="validatePassword">
+              <span class="iconfont icon-jiesuo"></span>
+              <span class="iconfont password-toggle" :class="showRegisterPassword ? 'icon-kejian' : 'icon-bukejian'"
+                @click="showRegisterPassword = !showRegisterPassword"></span>
+              <div v-if="errors.register.password" class="error-message">{{ errors.register.password }}</div>
+            </div>
+
+            <div class="input-group">
+              <input class="acc" :type="showConfirmPassword ? 'text' : 'password'" placeholder="请确认密码"
+                v-model="registerForm.confirmPassword" @blur="validateConfirmPassword">
+              <span class="iconfont icon-jiesuo"></span>
+              <span class="iconfont password-toggle" :class="showConfirmPassword ? 'icon-kejian' : 'icon-bukejian'"
+                @click="showConfirmPassword = !showConfirmPassword"></span>
+              <div v-if="errors.register.confirmPassword" class="error-message">{{ errors.register.confirmPassword }}</div>
+            </div>
+            <div class="code-group">
+              <input class="acc" type="text" placeholder="请输入验证码" v-model="registerForm.code">
+              <button class="send-btn" :disabled="isCounting || !isAccountValid" @click="sendCode">
+                {{ countdown > 0 ? `${countdown}s后重发` : '获取验证码' }}
+              </button>
+              <div v-if="errors.register.code" class="error-message">{{ errors.register.code }}</div>
+            </div>
+
+            <UserAgreement v-model="agreementChecked" />
+            <button class="Login" type="submit" value="注册" @click="registerBtn">注册</button>
+          </form>
+
+          <div class="fn">
+            <a href="#" @click.prevent="toggleForm">{{ isRegister ? '已有账号？登录' : '注册账号' }}</a>
+            <a v-if="!isRegister" href="#" @click.prevent="showForgotPassword">忘记密码？</a>
+          </div>
         </div>
-        <!-- 忘记密码链接 -->
 
+        <button class="control-btn close" @click="close">X</button>
+        <ForgotPassword v-if="showForgotModal" @close="showForgotModal = false" />
       </div>
-
-      <button class="control-btn close" @click="close">X</button>
-
-      <ForgotPassword v-if="showForgotModal" @close="showForgotModal = false" />
-
     </div>
-  </div>
-
+  
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserInfoStore } from '@/stores/userInfo'
 import UserAgreement from './UserAgreement.vue'
 import SocialLogin from './SocialLogin.vue'
 import ForgotPassword from './ForgotPassword.vue'
 import VerificationCode from './VerificationCode.vue'
-import { userRegisterService, userLoginService, sendSMSCodeService, userLoginByCodeService } from '@/api/user'
+import { userRegisterService, userLoginService, sendSMSCodeService, userLoginByCodeService, getCaptchaService } from '@/api/user'
 import { ElMessage } from 'element-plus'
 import { useTokenStore } from '@/stores/token'
 
 
 const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false
-  },
-  isRegister: {
-    type: Boolean,
-    default: false
-  }
+  visible: { type: Boolean, default: false },
+  isRegister: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:visible', 'update:isRegister'])
 
-// 状态管理
 const router = useRouter()
 const userStore = useUserInfoStore()
 const tokenStore = useTokenStore()
 
 // 表单数据
 const loginForm = ref({
-  phone: '',
+  account: '',
   password: '',
-  code: ''
+  code: '',
+  captchaCode: ''
 })
 
 const registerForm = ref({
-  phone: '',
+  account: '',
   password: '',
   confirmPassword: '',
   code: ''
@@ -158,9 +147,13 @@ const showForgotModal = ref(false)
 const isCounting = ref(false)
 const countdown = ref(0)
 const timer = ref(null)
-const isPhoneValid = ref(false)
-// 添加登录方式状态
-const loginMethod = ref('password') // 'password' 或 'code'
+const isAccountValid = ref(false)
+const loginMethod = ref('password')
+
+// 图形验证码
+const showCaptcha = ref(false)
+const captchaUuid = ref('')
+const captchaImage = ref('')
 
 // 拖拽相关
 const draggableContainer = ref(null)
@@ -170,8 +163,8 @@ const dragStartY = ref(0)
 
 // 错误信息
 const errors = ref({
-  login: { phone: '', password: '', code: '' },
-  register: { phone: '', password: '', confirmPassword: '', code: '' }
+  login: { account: '', password: '', code: '', captcha: '' },
+  register: { account: '', password: '', confirmPassword: '', code: '' }
 })
 
 
@@ -205,27 +198,30 @@ const stopDrag = () => {
   document.removeEventListener('mouseup', stopDrag)
 }
 
+/** 判断字符串是否为邮箱格式 */
+const isEmail = (str) => /^[\w.+-]+@[\w-]+\.[\w.]+$/.test(str)
+
 const close = () => {
+  loginForm.value = { account: '', password: '', code: '', captchaCode: '' }
+  registerForm.value = { account: '', password: '', confirmPassword: '', code: '' }
+  showCaptcha.value = false
   emit('update:visible', false)
-  loginForm.value = { phone: '', password: '', code: '' }
-  registerForm.value = { phone: '', password: '', confirmPassword: '', code: '' }
 }
 
 const registerBtn = async () => {
   if (props.isRegister) {
     if (!validateRegisterForm() || !agreementChecked.value || !registerForm.value.code) {
-      ElMessage({
-        type: 'error',
-        message: '信息填写有误，请检查！'
-      })
+      ElMessage({ type: 'error', message: '信息填写有误，请检查！' })
       return
     }
-    let result = await userRegisterService(registerForm.value)
+    // 注册：传 account + password + code（不含 confirmPassword）
+    const { confirmPassword, ...regData } = registerForm.value
+    let result = await userRegisterService(regData)
     if (result.code === 0) {
       ElMessage.success(result.msg ? result.msg : '注册成功')
       toggleForm()
     } else {
-      ElMessage.error(result.message ? result.message : '注册失败')
+      ElMessage.error(result.msg ? result.msg : '注册失败')
     }
   } else {
     await handleLogin()
@@ -236,34 +232,52 @@ const loginBtn = async () => {
   await handleLogin()
 }
 
-// 登录处理 - 适配双Token机制
+// 刷新图形验证码
+const refreshCaptcha = async () => {
+  try {
+    const res = await getCaptchaService()
+    if (res.code === 0 && res.data) {
+      captchaUuid.value = res.data.uuid
+      captchaImage.value = res.data.image
+      showCaptcha.value = true
+    }
+  } catch (e) {
+    console.error('获取验证码失败', e)
+  }
+}
+
+// 登录处理
 const handleLogin = async () => {
   if (!validateLoginForm()) {
-    ElMessage({
-      type: 'error',
-      message: '信息填写有误，请检查！'
-    })
+    ElMessage({ type: 'error', message: '信息填写有误，请检查！' })
     return
   }
   if (!agreementChecked.value) {
-    ElMessage({
-      type: 'warning',
-      message: '请先同意用户协议'
-    })
+    ElMessage({ type: 'warning', message: '请先同意用户协议' })
     return
   }
 
   let result
   if (loginMethod.value === 'password') {
-    result = await userLoginService({
-      phone: loginForm.value.phone,
+    const loginData = {
+      account: loginForm.value.account,
       password: loginForm.value.password
-    })
+    }
+    if (showCaptcha.value) {
+      loginData.captchaUuid = captchaUuid.value
+      loginData.captchaCode = loginForm.value.captchaCode
+    }
+    result = await userLoginService(loginData)
   } else {
-    result = await userLoginByCodeService({
-      phone: loginForm.value.phone,
+    const codeData = {
+      account: loginForm.value.account,
       code: loginForm.value.code
-    })
+    }
+    if (showCaptcha.value) {
+      codeData.captchaUuid = captchaUuid.value
+      codeData.captchaCode = loginForm.value.captchaCode
+    }
+    result = await userLoginByCodeService(codeData)
   }
 
   if (result.code === 0) {
@@ -291,47 +305,41 @@ const handleLogin = async () => {
       isOnline: result.data.isOnline
     })
 
+    showCaptcha.value = false
     if (result.data.userType === 1) {
-      userStore.login({
-        role: 'admin',
-        phone: loginForm.value.phone
-      })
+      userStore.login({ role: 'admin', phone: loginForm.value.account })
       const redirectPath = router.currentRoute.value.query.redirect || '/admin'
       router.push(redirectPath)
-      close()
     } else {
-      userStore.login({
-        role: 'user',
-        phone: loginForm.value.phone
-      })
-      close()
+      userStore.login({ role: 'user', phone: loginForm.value.account })
       router.push('/')
     }
+    emit('update:visible', false)
   } else {
-    ElMessage.error(result.message ? result.message : '登录失败')
+    // 如果返回了"还剩X次机会"或"锁定"类错误，自动显示验证码
+    const errMsg = result.msg || result.message || '登录失败'
+    if (errMsg.includes('图形验证码') || errMsg.includes('还剩') || errMsg.includes('锁定')) {
+      showCaptcha.value = true
+      refreshCaptcha()
+    }
+    ElMessage.error(errMsg)
   }
 }
 
-// 发送验证码方法
+// 发送验证码方法（支持手机号或邮箱）
 const sendCode = async () => {
   const formType = props.isRegister ? 'register' : 'login'
-  validatePhone(formType)
+  validateAccount(formType)
 
-  if (!isPhoneValid.value || errors.value[formType].phone) {
-    ElMessage({
-      type: 'error',
-      message: '请输入正确的手机号'
-    })
+  if (!isAccountValid.value || errors.value[formType].account) {
+    ElMessage({ type: 'error', message: '请输入正确的手机号或邮箱' })
     return
   }
 
+  const target = props.isRegister ? registerForm.value.account : loginForm.value.account
+
   try {
-    let result
-    if (props.isRegister) {
-      result = await sendSMSCodeService(registerForm.value.phone, formType)
-    } else {
-      result = await sendSMSCodeService(loginForm.value.phone, formType)
-    }
+    const result = await sendSMSCodeService(target, formType)
     if (result.code === 0) {
       isCounting.value = true
       countdown.value = 60
@@ -342,7 +350,7 @@ const sendCode = async () => {
           isCounting.value = false
         }
       }, 1000)
-      ElMessage.success('验证码发送成功')
+      ElMessage.success(isEmail(target) ? '验证码已发送至邮箱' : '验证码发送成功')
     } else {
       ElMessage.error(result.msg || '验证码发送失败')
     }
@@ -351,38 +359,41 @@ const sendCode = async () => {
   }
 }
 
-const handlePhoneUpdate = (phone) => {
-  loginForm.value.phone = phone
-  validatePhone('login')
+const handleAccountUpdate = (account) => {
+  loginForm.value.account = account
+  validateAccount('login')
 }
 
-const validatePhone = (formType) => {
-  const phone = formType === 'login' ? loginForm.value.phone : registerForm.value.phone
-  if (!phone) {
-    errors.value[formType].phone = '请输入手机号'
-    if (formType === 'register') {
-      isPhoneValid.value = false
-    }
-  } else if (!/^1[3-9]\d{9}$/.test(phone)) {
-    errors.value[formType].phone = '请输入正确的手机号'
-    if (formType === 'register') {
-      isPhoneValid.value = false
-    }
+const validateAccount = (formType) => {
+  const account = formType === 'login' ? loginForm.value.account : registerForm.value.account
+  if (!account) {
+    errors.value[formType].account = '请输入手机号或邮箱'
+    isAccountValid.value = false
+  } else if (isEmail(account)) {
+    errors.value[formType].account = ''
+    isAccountValid.value = true
+  } else if (!/^1[3-9]\d{9}$/.test(account)) {
+    errors.value[formType].account = '请输入正确的手机号或邮箱'
+    isAccountValid.value = false
   } else {
-    errors.value[formType].phone = ''
-    if (formType === 'register') {
-      isPhoneValid.value = true
-    }
+    errors.value[formType].account = ''
+    isAccountValid.value = true
   }
 }
 
 const validateLoginForm = () => {
-  validatePhone('login')
+  validateAccount('login')
   if (loginMethod.value === 'password') {
     if (!loginForm.value.password) {
       errors.value.login.password = '请输入密码'
     } else {
       errors.value.login.password = ''
+    }
+    if (showCaptcha.value && !loginForm.value.captchaCode) {
+      errors.value.login.captcha = '请输入图形验证码'
+      refreshCaptcha()
+    } else {
+      errors.value.login.captcha = ''
     }
   } else {
     if (!loginForm.value.code) {
@@ -395,11 +406,12 @@ const validateLoginForm = () => {
 const toggleForm = () => {
   emit('update:isRegister', !props.isRegister)
   loginMethod.value = 'password'
+  showCaptcha.value = false
   resetErrors()
 }
 
 const validateRegisterForm = () => {
-  validatePhone('register')
+  validateAccount('register')
   validatePassword()
   validateConfirmPassword()
   return Object.values(errors.value.register).every(error => !error)
@@ -430,12 +442,14 @@ const showForgotPassword = () => {
 
 const resetErrors = () => {
   errors.value = {
-    login: { phone: '', password: '' },
-    register: { phone: '', password: '', confirmPassword: '', code: '' }
+    login: { account: '', password: '', code: '', captcha: '' },
+    register: { account: '', password: '', confirmPassword: '', code: '' }
   }
 }
+onMounted(async () => {
+  refreshCaptcha()
+})
 
-// 生命周期
 onBeforeUnmount(() => {
   document.removeEventListener('mousemove', handleDrag)
   document.removeEventListener('mouseup', stopDrag)
@@ -444,13 +458,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 保持之前的样式不变，确保与之前样式一致 */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   z-index: 1000;
 }
+
 
 .auth-container {
   position: fixed;
@@ -467,10 +482,10 @@ onBeforeUnmount(() => {
   align-items: center;
   margin: 0;
   overflow: hidden;
-  width: 640px;
-  height: 500px;
+  width: 680px;
+  height: 520px;
   border-radius: 1.5rem;
-  box-shadow: 0 0 2rem 0.4rem rgba(23, 235, 146, 0.6);
+  box-shadow: 0 0 2rem 0.4rem rgba(23, 235, 146, 0.7);
   background-color: rgba(25, 245, 245, 0.4);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -501,12 +516,14 @@ onBeforeUnmount(() => {
 .box .right {
   display: flex;
   width: 70%;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   padding: 30px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
 }
 
 .box .right h4 {
@@ -740,5 +757,19 @@ onBeforeUnmount(() => {
 
 .method-btn:hover:not(.active) {
   background: rgba(144, 129, 241, 0.1);
+}
+
+/* 图形验证码 */
+.captcha-input {
+  width: 55% !important;
+}
+.captcha-img {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 35px;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  border: 1px solid rgb(144, 129, 241);
 }
 </style>

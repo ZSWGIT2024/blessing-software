@@ -12,18 +12,18 @@
 
       <div v-if="currentStep === 1" class="step-content">
         <div class="input-group">
-          <input type="tel" placeholder="请输入与账号相同的手机号" v-model="phone" @blur="validatePhone">
-          <div v-if="phoneError" class="error-message">{{ phoneError }}</div>
+          <input type="text" placeholder="请输入与账号相同的手机号或邮箱" v-model="account" @blur="validateAccount">
+          <div v-if="accountError" class="error-message">{{ accountError }}</div>
         </div>
 
         <div class="code-group">
           <input type="text" placeholder="请输入验证码" v-model="code">
-          <button class="send-btn" :disabled="isCounting || !isPhoneValid" @click="sendCode">
+          <button class="send-btn" :disabled="isCounting || !isAccountValid" @click="sendCode">
             {{ countdown > 0 ? `${countdown}s后重发` : '获取验证码' }}
           </button>
         </div>
 
-        <button class="next-btn" :disabled="!isPhoneValid" @click="verifyCode">
+        <button class="next-btn" :disabled="!isAccountValid" @click="verifyCode">
           下一步
         </button>
       </div>
@@ -68,19 +68,24 @@ const tokenStore = useTokenStore()
 
 // 响应式数据
 const currentStep = ref(1)
-const phone = ref('')
+const account = ref('')
 const code = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const isCounting = ref(false)
 const countdown = ref(0)
 const timer = ref(null)
-const phoneError = ref('')
+const accountError = ref('')
 const passwordError = ref('')
 const confirmPasswordError = ref('')
 
+const isEmail = (str) => /^[\w.+-]+@[\w-]+\.[\w.]+$/.test(str)
+
 // 计算属性
-const isPhoneValid = computed(() => /^1[3-9]\d{9}$/.test(phone.value))
+const isAccountValid = computed(() => {
+  const val = account.value
+  return isEmail(val) || /^1[3-9]\d{9}$/.test(val)
+})
 const canSubmit = computed(() => newPassword.value &&
   confirmPassword.value &&
   !passwordError.value &&
@@ -88,16 +93,17 @@ const canSubmit = computed(() => newPassword.value &&
 )
 
 // 方法
-const validatePhone = () => {
+const validateAccount = () => {
   const userPhone = userStore.currentUser.phone
-  if (!phone.value) {
-    phoneError.value = '请输入手机号'
-  } else if (!isPhoneValid.value) {
-    phoneError.value = '请输入正确的手机号'
-  } else if (phone.value !== userPhone) {
-    phoneError.value = '手机号与账号不匹配'
+  const userEmail = userStore.currentUser.email
+  if (!account.value) {
+    accountError.value = '请输入手机号或邮箱'
+  } else if (!isAccountValid.value) {
+    accountError.value = '请输入正确的手机号或邮箱'
+  } else if (account.value !== userPhone && account.value !== userEmail) {
+    accountError.value = '输入信息与账号不匹配'
   } else {
-    phoneError.value = ''
+    accountError.value = ''
   }
 }
 
@@ -124,19 +130,17 @@ const validateConfirmPassword = () => {
 }
 
 const sendCode = async () => {
-  if (!isPhoneValid.value) return
+  if (!isAccountValid.value) return
   if (isCounting.value) return
-  const accountPhone = userStore.currentUser.phone
-  if (accountPhone !== phone.value) {
-    ElMessage.error('请输入与注册账号相同的手机号')
+  const accountVal = userStore.currentUser.phone || userStore.currentUser.email
+  if (accountVal !== account.value) {
+    ElMessage.error('请输入与注册账号相同的手机号或邮箱')
     return
   }
-  // 调用sendSMSCodeService接口,发送验证码请求
   try {
-    const result = await sendSMSCodeService(phone.value, 'reset')
+    const result = await sendSMSCodeService(account.value, 'reset')
     if (result.code === 0) {
-      ElMessage.success('验证码发送成功')
-       // 开始倒计时
+      ElMessage.success(isEmail(account.value) ? '验证码已发送至邮箱' : '验证码发送成功')
       isCounting.value = true
       countdown.value = 60
       timer.value = setInterval(() => {
@@ -155,7 +159,7 @@ const sendCode = async () => {
 }
 
 const verifyCode = () => {
-  if (!isPhoneValid.value) return
+  if (!isAccountValid.value) return
   if (!code.value) {
     ElMessage.error('请输入验证码')
     return
@@ -203,7 +207,7 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(107, 215, 223, 0.5);
+  background: rgba(175, 235, 207, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;

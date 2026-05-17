@@ -28,11 +28,8 @@ import java.util.stream.Collectors;
 public class EmojiServiceImpl implements EmojiService {
 
     private final EmojiMapper emojiMapper;
-
     private final AliOssUtil aliOssUtil;
-
-    @Value("${upload.storage.type:oss}")  // 从配置读取存储类型
-    private String storageType;
+    private final EmojiCacheService emojiCacheService;
 
     @Value("${upload.max-size.chat:10485760}") // 聊天文件最大10MB
     private long maxImageSize;
@@ -571,6 +568,10 @@ public class EmojiServiceImpl implements EmojiService {
 
     @Override
     public List<EmojiPackDTO> getEmojiPacks() {
+        // 查缓存
+        List<EmojiPackDTO> cached = emojiCacheService.getCachedPacks();
+        if (cached != null) return cached;
+
         List<EmojiPack> packs = emojiMapper.selectAllPacks();
         List<EmojiPackDTO> dtos = new ArrayList<>();
 
@@ -583,11 +584,21 @@ public class EmojiServiceImpl implements EmojiService {
             dto.setItemCount(emojiMapper.countPackItems(pack.getId()));
             dtos.add(dto);
         }
+        // 写缓存（防穿透）
+        if (dtos.isEmpty()) {
+            emojiCacheService.cacheEmptyPacks();
+        } else {
+            emojiCacheService.cachePacks(dtos);
+        }
         return dtos;
     }
 
     @Override
     public List<EmojiPackItemDTO> getEmojiPackItems(Long packId) {
+        // 查缓存
+        List<EmojiPackItemDTO> cached = emojiCacheService.getCachedPackItems(packId);
+        if (cached != null) return cached;
+
         Integer userId = getCurrentUserId();
         List<EmojiPackItem> items = emojiMapper.selectPackItems(packId);
         List<EmojiPackItemDTO> dtos = new ArrayList<>();
@@ -602,6 +613,12 @@ public class EmojiServiceImpl implements EmojiService {
             int count = emojiMapper.checkPackItemFavorite(userId, item.getId());
             dto.setIsFavorite(count > 0);
             dtos.add(dto);
+        }
+        // 写缓存（防穿透）
+        if (dtos.isEmpty()) {
+            emojiCacheService.cacheEmptyPackItems(packId);
+        } else {
+            emojiCacheService.cachePackItems(packId, dtos);
         }
         return dtos;
     }
@@ -621,6 +638,7 @@ public class EmojiServiceImpl implements EmojiService {
         emojiPack.setStatus(1); // 默认启用
 
         emojiMapper.insertEmojiPack(emojiPack);
+        emojiCacheService.evictPacks(); // 表情包列表变更
 
         emojiPackDTO.setId(emojiPack.getId());
         emojiPackDTO.setItemCount(0);
@@ -644,6 +662,7 @@ public class EmojiServiceImpl implements EmojiService {
         emojiPack.setDescription(emojiPackDTO.getDescription());
 
         emojiMapper.updateEmojiPack(emojiPack);
+        emojiCacheService.evictPacks(); // 表情包信息变更
     }
 
     @Override
@@ -657,6 +676,7 @@ public class EmojiServiceImpl implements EmojiService {
 
         // 软删除或硬删除，这里使用硬删除
         emojiMapper.deleteEmojiPack(packId);
+        emojiCacheService.evictAllEmojiPackCache(packId); // 清除表情包及内容缓存
     }
 
     @Override
@@ -768,6 +788,7 @@ public class EmojiServiceImpl implements EmojiService {
             }
 
             log.info("批量上传表情包图片成功，packId: {}, 数量: {}", packId, result.size());
+            emojiCacheService.evictPackItems(packId); // 表情包内容变更
             return result;
 
         } catch (IOException e) {
@@ -789,6 +810,7 @@ public class EmojiServiceImpl implements EmojiService {
         updateItem.setDescription(itemDTO.getDescription());
 
         emojiMapper.updatePackItem(updateItem);
+        emojiCacheService.evictPackItems(item.getPackId());
     }
 
     @Override
@@ -800,6 +822,7 @@ public class EmojiServiceImpl implements EmojiService {
         }
 
         emojiMapper.deletePackItem(itemId);
+        emojiCacheService.evictPackItems(item.getPackId()); // 表情包内容变更
     }
 
     @Override

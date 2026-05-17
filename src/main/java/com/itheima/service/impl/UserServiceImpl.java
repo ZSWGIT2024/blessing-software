@@ -5,6 +5,7 @@ import com.itheima.dto.UserSimpleDTO;
 import com.itheima.mapper.UserMapper;
 import com.itheima.pojo.Result;
 import com.itheima.pojo.User;
+import com.itheima.service.AvatarFrameService;
 import com.itheima.service.ExpService;
 import com.itheima.service.UserService;
 import com.itheima.utils.BCryptUtil;
@@ -34,6 +35,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findByPhone(String phone) {
         return userMapper.findByPhone(phone);
+    }
+
+    @Override
+    public User findByEmail(String email) {
+        return userMapper.findByEmail(email);
     }
 
     // 需要修改这个方法，创建完整的User对象
@@ -101,6 +107,11 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> claims = ThreadLocalUtil.get();
         Integer id = (Integer) claims.get("id");
         userMapper.updateUsername(id, username);
+    }
+
+    @Override
+    public void updateUserEmail(Integer userId, String email) {
+        userMapper.updateEmail(userId, email);
     }
 
     @Override
@@ -330,5 +341,44 @@ public class UserServiceImpl implements UserService {
         String hashedPassword = BCryptUtil.encode(newPassword);
         userMapper.updatePwd(userId, hashedPassword);
         log.info("用户密码已更新：userId={}", userId);
+    }
+
+    @Override
+    public Map<String, Object> checkUsernameAvailability(String username, Integer excludeUserId) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (username == null || username.trim().isEmpty()) {
+            result.put("available", false);
+            result.put("message", "用户名不能为空");
+            return result;
+        }
+
+        String trimmed = username.trim();
+        if (trimmed.length() < 2) {
+            result.put("available", false);
+            result.put("message", "用户名不能小于2个字符");
+            return result;
+        }
+        if (trimmed.length() > 18) {
+            result.put("available", false);
+            result.put("message", "用户名不能超过18个字符");
+            return result;
+        }
+        if (!trimmed.matches("^[\\u4e00-\\u9fa5a-zA-Z0-9\\-_.，！？、@#$%^&*()]+$")) {
+            result.put("available", false);
+            result.put("message", "用户名只能包含中文、字母、数字及常见标点符号");
+            return result;
+        }
+
+        User existing = userMapper.findByUsername(trimmed);
+        if (existing != null && (excludeUserId == null || !existing.getId().equals(excludeUserId))) {
+            result.put("available", false);
+            result.put("message", "用户名已存在");
+            return result;
+        }
+
+        result.put("available", true);
+        result.put("message", "用户名可用");
+        return result;
     }
 }

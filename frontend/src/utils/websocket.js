@@ -124,6 +124,53 @@ class WebSocketService {
                 })
                 break
 
+            case 'group_message':
+                this.notifyMessageHandlers('groupMessage', {
+                    messageId: data.messageId,
+                    groupId: data.groupId,
+                    senderId: data.senderId,
+                    senderName: data.senderName,
+                    senderAvatar: data.senderAvatar,
+                    content: data.content,
+                    contentType: data.contentType,
+                    extraData: data.extraData,
+                    createTime: data.timestamp
+                })
+                break
+
+            case 'world_message':
+                this.notifyMessageHandlers('worldMessage', {
+                    messageId: data.messageId,
+                    senderId: data.senderId,
+                    senderName: data.senderName,
+                    senderAvatar: data.senderAvatar,
+                    content: data.content,
+                    contentType: data.contentType,
+                    extraData: data.extraData,
+                    createTime: data.timestamp
+                })
+                break
+
+            case 'group_event':
+                this.notifyMessageHandlers('groupEvent', {
+                    groupId: data.groupId,
+                    eventType: data.eventType,
+                    operatorId: data.operatorId,
+                    targetUserId: data.targetUserId,
+                    content: data.content,
+                    createTime: data.timestamp
+                })
+                break
+
+            case 'group_read':
+                this.notifyMessageHandlers('groupRead', {
+                    groupId: data.groupId,
+                    messageId: data.messageId,
+                    readerId: data.readerId,
+                    timestamp: data.timestamp
+                })
+                break
+
             case 'pong':
                 // 心跳响应
                 console.log('收到心跳响应')
@@ -186,6 +233,60 @@ class WebSocketService {
             this.ws.send(JSON.stringify(data))
         } catch (error) {
             console.error('发送已读回执失败:', error)
+        }
+    }
+
+    // 发送群消息
+    sendGroupMessage(groupId, messageData) {
+        if (!this.isConnected()) return false
+
+        try {
+            const data = {
+                type: 'group_message',
+                groupId,
+                ...messageData,
+                timestamp: new Date().toISOString()
+            }
+            this.ws.send(JSON.stringify(data))
+            return true
+        } catch (error) {
+            console.error('发送群消息失败:', error)
+            return false
+        }
+    }
+
+    // 发送世界聊天消息
+    sendWorldMessage(messageData) {
+        if (!this.isConnected()) return false
+
+        try {
+            const data = {
+                type: 'world_message',
+                ...messageData,
+                timestamp: new Date().toISOString()
+            }
+            this.ws.send(JSON.stringify(data))
+            return true
+        } catch (error) {
+            console.error('发送世界消息失败:', error)
+            return false
+        }
+    }
+
+    // 发送群消息已读回执
+    sendGroupReadReceipt(groupId, messageId) {
+        if (!this.isConnected()) return
+
+        try {
+            const data = {
+                type: 'group_read',
+                groupId,
+                messageId,
+                timestamp: new Date().toISOString()
+            }
+            this.ws.send(JSON.stringify(data))
+        } catch (error) {
+            console.error('发送群已读回执失败:', error)
         }
     }
 

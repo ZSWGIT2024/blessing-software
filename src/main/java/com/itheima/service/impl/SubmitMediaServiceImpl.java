@@ -6,6 +6,7 @@ import com.itheima.config.MediaProperties;
 import com.itheima.dto.MediaQueryDTO;
 import com.itheima.dto.MediaUpdateDTO;
 import com.itheima.dto.MediaUploadDTO;
+import com.itheima.dto.SubmitBatchRequest;
 import com.itheima.exception.BusinessException;
 import com.itheima.mapper.SubmitLikeMapper;
 import com.itheima.mapper.SubmitMediaMapper;
@@ -634,7 +635,6 @@ public class SubmitMediaServiceImpl implements SubmitMediaService {
             userMedia.setOriginalName(file.getOriginalFilename());
             userMedia.setFilePath(ossUrl);
             userMedia.setThumbnailPath(getDefaultThumbnailUrl());
-//            userMedia.setThumbnailPath(thumbnailPath);
             userMedia.setFileSize(tempFile.length());
             userMedia.setMimeType(file.getContentType());
             userMedia.setDescription(dto.getDescription());
@@ -1086,6 +1086,63 @@ public class SubmitMediaServiceImpl implements SubmitMediaService {
                 Integer.parseInt(dimensions[0]),
                 Integer.parseInt(dimensions[1])
         };
+    }
+
+    @Override
+    @Transactional
+    public List<MediaVO> batchSubmit(Integer userId, SubmitBatchRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BusinessException("提交列表不能为空");
+        }
+        User user = userMapper.findUserById(userId);
+        if (user == null) throw new BusinessException("用户不存在");
+        if (!user.isActive()) throw new BusinessException("账号状态异常，无法提交");
+
+        List<MediaVO> results = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        int successCount = 0;
+
+        for (SubmitBatchRequest.SubmitItem item : request.getItems()) {
+            String originalName = item.getOriginalName() != null ? item.getOriginalName()
+                    : item.getFileUrl().substring(item.getFileUrl().lastIndexOf('/') + 1);
+            String fileName = item.getFileName() != null ? item.getFileName()
+                    : originalName.replaceFirst("\\.[^.]+$", "");
+            UserMedia media = new UserMedia();
+            media.setUserId(userId);
+            media.setMediaType(item.getMediaType() != null ? item.getMediaType() : "image");
+            media.setMimeType(item.getMimeType() != null && !item.getMimeType().isEmpty()
+                    ? item.getMimeType() : "application/octet-stream");
+            media.setWidth(item.getWidth());
+            media.setHeight(item.getHeight());
+            media.setDuration(item.getDuration());
+            media.setFilename(fileName);
+            media.setOriginalName(originalName);
+            media.setFilePath(item.getFileUrl());
+            media.setThumbnailPath(item.getFileUrl());
+            media.setFileSize(item.getFileSize());
+            media.setMimeType(item.getMediaType());
+            media.setDescription(item.getDescription());
+            media.setCategory(item.getCategory());
+            media.setWall(item.getWall() != null ? item.getWall() :
+                    (Math.random() > 0.5 ? "left" : "right"));
+            media.setIsPublic(item.getIsPublic() != null ? item.getIsPublic() : true);
+            media.setUploadIp(request.getUploadIp());
+            media.setUploadTime(now);
+            media.setUpdateTime(now);
+            media.setViewCount(0);
+            media.setLikeCount(0);
+            media.setStatus("pending");
+            submitMediaMapper.insert(media);
+            results.add(MediaConverter.toVO(media));
+            successCount++;
+        }
+
+        if (successCount > 0) {
+            try { dailyUploadService.updateUploadCount(userId, successCount); }
+            catch (Exception e) { log.warn("更新上传计数失败: userId={}", userId, e); }
+        }
+        log.info("用户 {} 批量提交了 {} 个媒体文件", userId, results.size());
+        return results;
     }
 
 }

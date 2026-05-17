@@ -1,16 +1,16 @@
 <template>
   <div class="verification-code">
-    <!-- 手机号输入框仅在注册模式显示 -->
+    <!-- 账号输入框仅在注册模式显示 -->
     <div class="input-group" v-if="!isLogin">
-      <input class="acc" type="tel" :placeholder="isRegister ? '请输入手机号' : '手机号'" v-model="phoneModel"
-        @blur="validatePhone">
+      <input class="acc" type="text" :placeholder="isRegister ? '请输入手机号或邮箱' : '手机号或邮箱'" v-model="accountModel"
+        @blur="validateAccount">
       <span class="iconfont icon-shouji"></span>
-      <div v-if="phoneError" class="error-message">{{ phoneError }}</div>
+      <div v-if="accountError" class="error-message">{{ accountError }}</div>
     </div>
 
     <div class="code-group">
       <input class="acc" type="text" placeholder="请输入验证码" v-model="codeModel">
-      <button class="send-btn" :disabled="isCounting || !isPhoneValid" @click="sendCode">
+      <button class="send-btn" :disabled="isCounting || !isAccountValid" @click="sendCode">
         {{ countdown > 0 ? `${countdown}s后重发` : '获取验证码' }}
       </button>
     </div>
@@ -24,60 +24,50 @@ import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   modelValue: String,
-  phone: String,
-  isRegister: {
-    type: Boolean,
-    default: false
-  },
-  isLogin: {
-    type: Boolean,
-    default: false
-  }
+  account: { type: String, default: '' },
+  isRegister: { type: Boolean, default: false },
+  isLogin: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:modelValue', 'update:phone'])
+const emit = defineEmits(['update:modelValue', 'update:account'])
 
-// 响应式数据
-const phoneModel = ref(props.phone || '')
+const isEmail = (str) => /^[\w.+-]+@[\w-]+\.[\w.]+$/.test(str)
+
+const accountModel = ref(props.account || '')
 const codeModel = ref(props.modelValue || '')
-const phoneError = ref('')
+const accountError = ref('')
 const isCounting = ref(false)
 const countdown = ref(0)
 const timer = ref(null)
 
-// 计算属性
-const isPhoneValid = computed(() => {
-  return /^1[3-9]\d{9}$/.test(phoneModel.value)
+const isAccountValid = computed(() => {
+  const val = accountModel.value
+  return isEmail(val) || /^1[3-9]\d{9}$/.test(val)
 })
 
-// 方法
-const validatePhone = () => {
-  if (!phoneModel.value) {
-    phoneError.value = '请输入手机号'
-  } else if (!isPhoneValid.value) {
-    phoneError.value = '请输入正确的手机号'
+const validateAccount = () => {
+  if (!accountModel.value) {
+    accountError.value = '请输入手机号或邮箱'
+  } else if (!isAccountValid.value) {
+    accountError.value = '请输入正确的手机号或邮箱'
   } else {
-    phoneError.value = ''
+    accountError.value = ''
   }
-
-  // 触发父组件更新手机号
   if (!props.isLogin) {
-    emit('update:phone', phoneModel.value)
+    emit('update:account', accountModel.value)
   }
 }
 
 const sendCode = async () => {
-  if (!isPhoneValid.value) {
-    phoneError.value = '请输入正确的手机号'
+  if (!isAccountValid.value) {
+    accountError.value = '请输入正确的手机号或邮箱'
     return
   }
-
   try {
-    // 发送登录或注册验证码
-    const result = await sendSMSCodeService(phoneModel.value, 'login')
+    const codeType = props.isRegister ? 'register' : 'login'
+    const result = await sendSMSCodeService(accountModel.value, codeType)
 
     if (result.code === 0) {
-      // 开始倒计时
       isCounting.value = true
       countdown.value = 60
       timer.value = setInterval(() => {
@@ -87,9 +77,7 @@ const sendCode = async () => {
           isCounting.value = false
         }
       }, 1000)
-      // 实际项目中调用API发送验证码
-      console.log(`验证码已发送至: ${phoneModel.value}`)
-      ElMessage.success('验证码发送成功')
+      ElMessage.success(isEmail(accountModel.value) ? '验证码已发送至邮箱' : '验证码发送成功')
     } else {
       ElMessage.error(result.msg || '验证码发送失败')
     }
@@ -98,27 +86,11 @@ const sendCode = async () => {
   }
 }
 
-// 监听器
-watch(codeModel, (newVal) => {
-  emit('update:modelValue', newVal)
-})
+watch(codeModel, (newVal) => emit('update:modelValue', newVal))
+watch(accountModel, (newVal) => { if (!props.isLogin) emit('update:account', newVal) })
+watch(() => props.account, (newVal) => { accountModel.value = newVal || '' })
+watch(() => props.modelValue, (newVal) => { codeModel.value = newVal || '' })
 
-watch(phoneModel, (newVal) => {
-  if (!props.isLogin) {
-    emit('update:phone', newVal)
-  }
-})
-
-// 监听props变化
-watch(() => props.phone, (newVal) => {
-  phoneModel.value = newVal || ''
-})
-
-watch(() => props.modelValue, (newVal) => {
-  codeModel.value = newVal || ''
-})
-
-// 生命周期
 onBeforeUnmount(() => {
   if (timer.value) clearInterval(timer.value)
 })

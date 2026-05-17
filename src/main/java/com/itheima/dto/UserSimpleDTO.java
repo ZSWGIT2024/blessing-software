@@ -44,6 +44,10 @@ public class UserSimpleDTO {
     @Pattern(regexp = "^(online|offline)$")
     private String isOnline = UserConstant.OFFLINE;
 
+    // 用户状态
+    @Pattern(regexp = "^(active|banned|muted)$")
+    private String status = UserConstant.STATUS_ACTIVE;
+
     // 时间戳
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastActiveTime;

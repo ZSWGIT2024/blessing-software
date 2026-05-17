@@ -27,14 +27,14 @@ public class ScheduledTask {
     private final UserMapper userMapper;
 
     /**
-     * 每天凌晨3点清理30天前的上传记录
+     * 每天凌晨3点清理100天前的上传记录
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanupOldUploadRecords() {
         try {
-            LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
-            int deletedCount = userDailyUploadMapper.deleteByDateBefore(thirtyDaysAgo);
-            log.info("已清理 {} 之前的每日上传记录，共清理 {} 条", thirtyDaysAgo, deletedCount);
+            LocalDate threeMonthsAgo = LocalDate.now().minusDays(100);
+            int deletedCount = userDailyUploadMapper.deleteByDateBefore(threeMonthsAgo);
+            log.info("已清理 {} 之前的每日上传记录，共清理 {} 条", threeMonthsAgo, deletedCount);
         } catch (Exception e) {
             log.error("清理上传记录失败", e);
         }

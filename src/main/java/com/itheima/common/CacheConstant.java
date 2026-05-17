@@ -1,11 +1,15 @@
 package com.itheima.common;
 
-import java.time.Duration;
-
+/**
+ * Spring Cache 缓存名称常量（配合 @Cacheable / @CacheEvict 使用）
+ * <p>
+ * Redis 手工缓存键和 TTL 请使用 {@link RedisConstants}。
+ * </p>
+ */
 public class CacheConstant {
 
     // 缓存键前缀
-    public static final String PREFIX = "heima:";
+    public static final String PREFIX = "blessing_software:";
 
     // 关注相关缓存
     public static final String CACHE_FOLLOW = PREFIX + "follow";
@@ -22,12 +26,6 @@ public class CacheConstant {
 
     // 通知相关缓存
     public static final String CACHE_NOTIFICATION = PREFIX + "notification";
-
-    // 缓存过期时间
-    public static final Duration EXPIRE_FOLLOW = Duration.ofHours(1);
-    public static final Duration EXPIRE_FRIEND = Duration.ofHours(2);
-    public static final Duration EXPIRE_USER = Duration.ofHours(3);
-    public static final Duration EXPIRE_NOTIFICATION = Duration.ofMinutes(30);
 
     // 缓存键生成工具方法
     public static String getFollowKey(Integer userId, Integer targetUserId) {
@@ -56,5 +54,9 @@ public class CacheConstant {
 
     public static String getUserKey(Integer userId) {
         return String.format("%s:%d", CACHE_USER, userId);
+    }
+
+    public static String getNotificationKey(Integer userId) {
+        return String.format("%s:%d", CACHE_NOTIFICATION, userId);
     }
 }

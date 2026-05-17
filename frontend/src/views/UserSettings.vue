@@ -2,7 +2,7 @@
   <div class="content-section sakura-bg">
     <h2>🌸 用户设置</h2>
     <button class="logout-btn" @click="logout">退出登录</button>
-    <button v-if="user.isAdmin == true" type="button" class="admin-btn" @click="goToAdmin">管理员入口</button>
+    <button v-if="isAdmin" type="button" class="admin-btn" @click="goToAdmin">管理员入口</button>
     <div class="settings-container">
       <div class="settings-tabs">
         <button v-for="tab in tabs" :key="tab.id" :class="{ active: activeTab === tab.id }" @click="activeTab = tab.id">
@@ -60,10 +60,10 @@
         <!-- 隐私设置 -->
         <div v-if="activeTab === 'privacy'" class="privacy-settings">
           <div class="setting-item">
-            <div class="setting-label">公开个人资料</div>
+            <div class="setting-label">显示手机号</div>
             <div class="setting-value">
               <label class="switch">
-                <input type="checkbox" v-model="privacySettings.profilePublic">
+                <input type="checkbox" v-model="privacySettings.showPhone">
                 <span class="slider round"></span>
               </label>
             </div>
@@ -77,37 +77,10 @@
               </label>
             </div>
           </div>
-          <div class="setting-item">
-            <div class="setting-label">个性化推荐</div>
-            <div class="setting-value">
-              <label class="switch">
-                <input type="checkbox" v-model="privacySettings.personalizedAds">
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
         </div>
 
         <!-- 通知设置 -->
         <div v-if="activeTab === 'notifications'" class="notification-settings">
-          <div class="setting-item">
-            <div class="setting-label">邮件通知</div>
-            <div class="setting-value">
-              <label class="switch">
-                <input type="checkbox" v-model="notificationSettings.emailNotifications">
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-          <div class="setting-item">
-            <div class="setting-label">短信通知</div>
-            <div class="setting-value">
-              <label class="switch">
-                <input type="checkbox" v-model="notificationSettings.smsNotifications">
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
           <div class="setting-item">
             <div class="setting-label">系统消息</div>
             <div class="setting-value">
@@ -128,13 +101,14 @@ import { ref } from 'vue';
 import { useUserInfoStore } from '@/stores/userInfo'
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router'
-import { useUpdatePasswordService, sendSMSCodeService } from '@/api/user'
+import { useUpdatePasswordService, sendSMSCodeService, userLogoutService } from '@/api/user'
 import { useTokenStore } from '@/stores/token'
 
 
 const tokenStore = useTokenStore()
 const userStore = useUserInfoStore()
 const router = useRouter()
+const isAdmin = localStorage.getItem('isAdmin') === 'true'
 // 密码表单数据
 const isCounting = ref(false)
 const countdown = ref(0)
@@ -299,19 +273,15 @@ const tabs = ref([
   { id: 'notifications', name: '通知设置' }
 ]);
 const user = ref({
-  isAdmin: userStore.isAdmin,
   email: userStore.currentUser.email || '未绑定',
   phone: userStore.currentUser.phone || '未绑定',
   username: userStore.currentUser.username || '未知用户'
 });
 const privacySettings = ref({
-  profilePublic: true,
-  showEmail: false,
-  personalizedAds: true
+  showPhone: false,
+  showEmail: false
 });
 const notificationSettings = ref({
-  emailNotifications: true,
-  smsNotifications: false,
   systemMessages: true
 });
 
@@ -319,29 +289,30 @@ const goToAdmin = () => {
   router.push('/admin')
 }
 const logout = () => {
-  // 执行登出操作
-  if (userStore.currentUser.status === 'offline' || userStore.currentUser.status === '') {
+  if (!userStore.currentUser?.id || userStore.currentUser.status === 'offline' || userStore.currentUser.status === '') {
     ElMessage.error('您未登录，无法登出')
     return
   }
-  //ElMessageBox的使用
   ElMessageBox.confirm('您确定要退出登录吗？', '温馨提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    userStore.logout()
-    // 跳转到登录页面
-    close()
-    //刷新页面
-    window.location.reload()
-    router.replace('/login')
+  }).then(async () => {
+    // 1. 先调后端登出接口（此时Token还在，不会被拦截器拒绝）
+    await userLogoutService().catch(e => {
+      console.error('后端登出请求失败（不影响前端登出）:', e)
+    })
+
+    // 2. 再清理前端状态
+    await userStore.logout()
+
     ElMessage.success('您已成功登出')
+    await router.replace('/login')
+    // 刷新页面
+    window.location.reload()
   }).catch(() => {
     ElMessage.info('已取消登出')
   })
-
-
 }
 
 </script>

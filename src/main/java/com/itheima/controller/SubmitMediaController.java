@@ -4,9 +4,11 @@ package com.itheima.controller;
 import com.itheima.dto.MediaQueryDTO;
 import com.itheima.dto.MediaUpdateDTO;
 import com.itheima.dto.MediaUploadDTO;
+import com.itheima.dto.SubmitBatchRequest;
 import com.itheima.pojo.PageBean;
 import com.itheima.pojo.Result;
 import com.itheima.pojo.UserMedia;
+import com.itheima.service.FavoriteService;
 import com.itheima.service.SubmitMediaService;
 import com.itheima.utils.IpUtil;
 import com.itheima.vo.MediaVO;
@@ -21,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/submit")
@@ -31,6 +34,29 @@ public class SubmitMediaController {
 
 
     private final SubmitMediaService submitMediaService;
+
+    private final FavoriteService favoriteService;
+
+    /**
+     * 批量提交已上传的媒体文件（两阶段：上传到OSS后，通过此接口将元数据写入DB）
+     * POST /api/submit/batch
+     */
+    @PostMapping("/batch")
+    public Result<List<MediaVO>> batchSubmit(@RequestBody SubmitBatchRequest request,
+                                              HttpServletRequest httpRequest) {
+        try {
+            String clientIp = IpUtil.getClientIp(httpRequest);
+            request.setUploadIp(clientIp);
+            Integer userId = Integer.valueOf(
+                    String.valueOf(com.itheima.utils.ThreadLocalUtil.get().get("id")));
+
+            List<MediaVO> vos = submitMediaService.batchSubmit(userId, request);
+            return Result.success(vos);
+        } catch (Exception e) {
+            log.error("批量提交失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
 
     /**
      * 批量上传媒体文件
@@ -216,5 +242,21 @@ public class SubmitMediaController {
         }
     }
 
+    /**
+     * 收藏/取消收藏投稿媒体
+     */
+    @PostMapping("/favorite/{id}")
+    public Result<com.itheima.pojo.Favorite> toggleFavorite(@PathVariable("id") Integer mediaId,
+                                                             @RequestBody Map<String, Object> body) {
+        try {
+            Integer folderId = body.get("folderId") != null
+                    ? ((Number) body.get("folderId")).intValue() : null;
+
+            com.itheima.pojo.Favorite favorite = favoriteService.toggleFavorite(mediaId, folderId);
+            return Result.success(favorite);
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
+    }
 
 }

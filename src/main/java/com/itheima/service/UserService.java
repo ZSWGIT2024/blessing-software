@@ -12,6 +12,8 @@ public interface UserService {
 
     //根据手机号查询用户
     User findByPhone(String phone);
+    //根据邮箱查询用户
+    User findByEmail(String email);
 
     //注册用户
     User saveUser(String username, String phone, String password, String clientIp, String registerLocation, String registerSource);
@@ -37,6 +39,8 @@ public interface UserService {
     //更新用户登录信息
     void updateLoginInfo(User user);
 
+    //更新用户邮箱（邮箱注册后回填）
+    void updateUserEmail(Integer userId, String email);
 
     // 新增的管理员方法
 
@@ -85,5 +89,13 @@ public interface UserService {
      * 根据用户ID更新密码
      */
     void updatePasswordById(Integer userId, String newPassword);
+
+    /**
+     * 检查用户名是否可用（格式校验 + 数据库查重）
+     * @param username 待检查的用户名
+     * @param excludeUserId 排除的用户ID（编辑自身时排除自己）
+     * @return {available: bool, message: str}
+     */
+    Map<String, Object> checkUsernameAvailability(String username, Integer excludeUserId);
 
 }

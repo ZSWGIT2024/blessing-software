@@ -8,8 +8,8 @@ import * as socialApi from '@/api/socialApi'
 
 export const useUserInfoStore = defineStore('userInfo', () => {
     // ========== 状态定义 ==========
-    const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')
-    const isAdmin = ref(localStorage.getItem('isAdmin') === 'true')
+    const isAuthenticated = ref(localStorage.getItem('isAuthenticated') === 'true')////
+    const isAdmin = ref(localStorage.getItem('isAdmin') === 'true')//
     const id = ref(localStorage.getItem('id') || `user_${Date.now()}`)
     //定义状态相关的内容
     const tokenStore = useTokenStore()
@@ -24,7 +24,6 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         currentUser.value = {}
     }
 
-
     const friendRequests = ref([])
     const blockedUsers = ref([])
     const chats = ref({})
@@ -32,6 +31,7 @@ export const useUserInfoStore = defineStore('userInfo', () => {
 
     // ========== 新增：WebSocket 相关状态 ==========
     const wsConnected = ref(false)
+    const worldMessages = ref([])
     const typingUsers = ref({}) // { userId: timestamp }
     const messageQueue = ref([]) // 离线消息队列
 
@@ -71,6 +71,32 @@ export const useUserInfoStore = defineStore('userInfo', () => {
             // 监听输入状态
             websocketService.onTyping((userId, isTyping) => {
                 handleTypingStatus(userId, isTyping)
+            })
+
+            // 监听群消息 — 委托给 roomStore
+            websocketService.on('groupMessage', (msg) => {
+                import('@/stores/room').then(mod => {
+                    mod.useRoomStore().handleGroupMessage(msg)
+                }).catch(() => {})
+            })
+
+            // 监听群事件
+            websocketService.on('groupEvent', (event) => {
+                import('@/stores/room').then(mod => {
+                    mod.useRoomStore().handleGroupEvent(event)
+                }).catch(() => {})
+            })
+
+            // 监听群已读回执
+            websocketService.on('groupRead', (data) => {
+                import('@/stores/room').then(mod => {
+                    mod.useRoomStore().handleGroupRead(data)
+                }).catch(() => {})
+            })
+
+            // 监听世界消息
+            websocketService.on('worldMessage', (msg) => {
+                handleWorldMessage(msg)
             })
         } catch (error) {
             console.error('WebSocket初始化失败，将使用HTTP模式', error)
@@ -140,6 +166,23 @@ export const useUserInfoStore = defineStore('userInfo', () => {
             typingUsers.value[userId] = Date.now()
         } else {
             delete typingUsers.value[userId]
+        }
+    }
+
+    // ========== 新增：处理世界消息 ==========
+    const handleWorldMessage = (msg) => {
+        // 按 messageId 去重（避免上传文件后出现重复消息）
+        if (msg.messageId) {
+            const idx = worldMessages.value.findIndex(m => m.messageId === msg.messageId)
+            if (idx !== -1) {
+                // 更新已有消息（保留已上传的文件URL等信息）
+                worldMessages.value[idx] = { ...worldMessages.value[idx], ...msg }
+                return
+            }
+        }
+        worldMessages.value.push(msg)
+        if (worldMessages.value.length > 100) {
+            worldMessages.value = worldMessages.value.slice(-100)
         }
     }
 
@@ -437,17 +480,19 @@ export const useUserInfoStore = defineStore('userInfo', () => {
     }
 
     // ========== 方法实现 ==========
-
+const authenticatedUser = ref(false)//是否登录
+const adminRole = ref(false)//是否管理员
 
     function login(userData) {
-        isAuthenticated.value = true
-        if (userData.role === 'admin') {
-            isAdmin.value = true
-        } else {
-            isAdmin.value = false
-        }
+        authenticatedUser.value = true
+        isAuthenticated.value = true      // 同步路由守卫用的 ref
+        adminRole.value = userData.userType === 1 || userData.userType === '1' || userData.role === 'admin'
+        isAdmin.value = adminRole.value
         persistToLocalStorage()
-        //刷新页面
+        // 保存 redirect 路径到 sessionStorage，避免 reload 丢失
+        const qs = new URLSearchParams(window.location.search)
+        const redirect = qs.get('redirect')
+        if (redirect) sessionStorage.setItem('loginRedirect', redirect)
         window.location.reload()
         return true
     }
@@ -456,6 +501,7 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         websocketService.disconnect()
         isAuthenticated.value = false
         isAdmin.value = false
+        adminRole.value = false
         tokenStore.removeToken()
         clearLocalStorage()
         removeInfo()
@@ -479,9 +525,7 @@ export const useUserInfoStore = defineStore('userInfo', () => {
                 const data = res.data
                 localStorage.setItem('userInfo', JSON.stringify(data));
                 currentUser.value = data
-                console.log(data);
                 
-
                 if (data.id && tokenStore.accessToken) {
                     initWebSocket(data.id, tokenStore.accessToken)
                 }
@@ -490,7 +534,7 @@ export const useUserInfoStore = defineStore('userInfo', () => {
                     Notification.requestPermission()
                 }
 
-                setInterval(updateUnreadCount, 30000)
+                setInterval(updateUnreadCount, 60000)
             }
         } catch {
             console.log('服务器获取用户信息失败，加载本地存储数据。');
@@ -504,8 +548,8 @@ export const useUserInfoStore = defineStore('userInfo', () => {
     }
 
     function persistToLocalStorage() {
-        localStorage.setItem('isAuthenticated', isAuthenticated.value);
-        localStorage.setItem('isAdmin', currentUser.value.userType === 1 ? 'true' : 'false');
+        localStorage.setItem('isAuthenticated', authenticatedUser.value);
+        localStorage.setItem('isAdmin', adminRole.value);
         localStorage.setItem('id', currentUser.value.id);
         localStorage.setItem('username', currentUser.value.username);
         localStorage.setItem('avatar', currentUser.value.avatar); // 新增
@@ -521,6 +565,9 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         localStorage.setItem('userType', currentUser.value.userType);
         localStorage.setItem('vipType', currentUser.value.vipType);
         localStorage.setItem('vipExpireTime', currentUser.value.vipExpireTime);
+        localStorage.setItem('status', currentUser.value.status);
+        localStorage.setItem('registerLocation', currentUser.value.registerLocation);
+        localStorage.setItem('lastLoginLocation', currentUser.value.lastLoginLocation);
         localStorage.setItem('userInfo', JSON.stringify(currentUser.value));
     }
 
@@ -542,6 +589,9 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         localStorage.removeItem('userType');
         localStorage.removeItem('vipType');
         localStorage.removeItem('vipExpireTime');
+        localStorage.removeItem('status');
+        localStorage.removeItem('registerLocation');
+        localStorage.removeItem('lastLoginLocation');
         localStorage.removeItem('userInfo');
     }
 
@@ -612,6 +662,8 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         // 状态
         isAuthenticated,
         isAdmin,
+        authenticatedUser,
+        adminRole,
         id,
         currentUser,
         friendRequests,
@@ -620,7 +672,6 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         notifications,
 
         // 计算属性
-        onlineFriends,
         unreadNotifications,
         userProfile,
         isCurrentUser,
@@ -634,6 +685,7 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         wsConnected,
         typingUsers,
         messageQueue,
+        worldMessages,
 
         // 社交计算属性
         onlineFriends,
@@ -665,7 +717,6 @@ export const useUserInfoStore = defineStore('userInfo', () => {
         removeFriend,
         blockUser,
         openPrivateChat,
-        getChatMessages,
         markMessageAsRead,
         // 通知方法
         sendNotification,

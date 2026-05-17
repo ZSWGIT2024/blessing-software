@@ -25,6 +25,10 @@ public interface UserMapper {
     @Select("select * from user where phone = #{phone}")
     User findByPhone(String phone);
 
+    // 根据邮箱查询用户
+    @Select("select * from user where email = #{email}")
+    User findByEmail(String email);
+
     // 添加用户到数据库（需要添加更多字段）
     @Insert("insert into user(username, phone, password,avatar, nickname, email, user_type, status, " +
             "level, exp, next_level_exp, vip_type, register_ip, register_location, register_source, " +
@@ -49,6 +53,10 @@ public interface UserMapper {
     // 更新用户名
     @Update("update user set username = #{username}, update_time = now() where id = #{id}")
     void updateUsername(@Param("id") Integer id, @Param("username") String username);
+
+    // 更新用户邮箱
+    @Update("update user set email = #{email}, update_time = now() where id = #{id}")
+    void updateEmail(@Param("id") Integer id, @Param("email") String email);
 
     /**
      * 更新用户在线状态

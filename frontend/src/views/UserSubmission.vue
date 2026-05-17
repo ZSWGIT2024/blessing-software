@@ -325,7 +325,6 @@ const fetchMediaList = async () => {
     const response = await getSubmitListService(params)
     
     if (response.code === 0) {
-      console.log('获取所有用户投稿数据信息response', response.data)
       
       // 更新分页信息
       totalItems.value = response.data?.total || 0

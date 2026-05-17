@@ -2,12 +2,14 @@ package com.itheima.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itheima.common.CacheConstant;
 import com.itheima.mapper.NotificationMapper;
 import com.itheima.pojo.Notification;
 import com.itheima.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConstant.CACHE_NOTIFICATION, key = "T(com.itheima.common.CacheConstant).getNotificationKey(#notification.userId)")
     public boolean sendNotification(Notification notification) {
         notification.setCreateTime(LocalDateTime.now());
         int result = notificationMapper.insert(notification);
@@ -90,18 +93,21 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConstant.CACHE_NOTIFICATION, allEntries = true)
     public boolean markAsRead(Long notificationId) {
         return notificationMapper.markAsRead(notificationId) > 0;
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConstant.CACHE_NOTIFICATION, key = "T(com.itheima.common.CacheConstant).getNotificationKey(#userId)")
     public boolean markAllAsRead(Integer userId) {
         return notificationMapper.markAllAsRead(userId) > 0;
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConstant.CACHE_NOTIFICATION, allEntries = true)
     public boolean deleteNotification(Long notificationId) {
         return notificationMapper.delete(notificationId) > 0;
     }
@@ -113,11 +119,13 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConstant.CACHE_NOTIFICATION, key = "T(com.itheima.common.CacheConstant).getNotificationKey(#userId)")
     public int getUnreadCount(Integer userId) {
         return notificationMapper.countUnread(userId);
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConstant.CACHE_NOTIFICATION, key = "T(com.itheima.common.CacheConstant).getNotificationKey(#userId)")
     public List<Notification> getLatestNotifications(Integer userId, Integer limit) {
         return notificationMapper.selectLatest(userId, limit);
     }

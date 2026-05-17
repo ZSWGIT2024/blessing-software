@@ -590,13 +590,15 @@ const followerTabs = computed(() => [
 const receivedRequestTabs = computed(() => [
   { value: 'pending', label: '待处理', count: pendingApplies.value.filter(a => a.status === 'pending').length },
   { value: 'accepted', label: '已同意', count: pendingApplies.value.filter(a => a.status === 'accepted').length },
-  { value: 'rejected', label: '已拒绝', count: pendingApplies.value.filter(a => a.status === 'rejected').length }
+  { value: 'rejected', label: '已拒绝', count: pendingApplies.value.filter(a => a.status === 'rejected').length },
+  { value: 'expired', label: '已过期', count: pendingApplies.value.filter(a => a.status === 'expired').length }
 ])
 
 const sentRequestTabs = computed(() => [
   { value: 'pending', label: '等待中', count: myApplies.value.filter(a => a.status === 'pending').length },
   { value: 'accepted', label: '已同意', count: myApplies.value.filter(a => a.status === 'accepted').length },
-  { value: 'rejected', label: '已拒绝', count: myApplies.value.filter(a => a.status === 'rejected').length }
+  { value: 'rejected', label: '已拒绝', count: myApplies.value.filter(a => a.status === 'rejected').length },
+  { value: 'expired', label: '已过期', count: myApplies.value.filter(a => a.status === 'expired').length }
 ])
 
 // 计算属性
@@ -768,7 +770,6 @@ const loadBlacklist = async () => {
       ElMessage.error(res.msg || '加载黑名单失败')
     }
   } catch (error) {
-    ElMessage.error('加载黑名单失败')
     console.error('加载黑名单失败:', error)
   } finally {
     blacklistLoading.value = false
@@ -779,7 +780,8 @@ const getStatusText = (status) => {
   const map = {
     'pending': '待处理',
     'accepted': '已同意',
-    'rejected': '已拒绝'
+    'rejected': '已拒绝',
+    'expired': '已过期'
   }
   return map[status] || status
 }
@@ -1265,6 +1267,7 @@ const handleClickOutside = (e) => {
 // 初始化
 onMounted(() => {
   loadSocialInfo()
+  loadRecentChats()
   loadFriendGroups()
   loadFollowers()
   loadBlacklist()

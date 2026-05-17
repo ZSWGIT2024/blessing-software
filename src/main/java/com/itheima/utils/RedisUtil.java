@@ -188,6 +188,13 @@ public class RedisUtil {
         }
     }
 
+    /**
+     * 从Set结构中移除元素
+     */
+    public Long sRemove(String key, Object... values) {
+        return redisTemplate.opsForSet().remove(key, values);
+    }
+
     //删除敏感词缓存
     public void sRemove(String sensitiveWordsKey, String word) {
         redisTemplate.opsForSet().remove(sensitiveWordsKey, word);

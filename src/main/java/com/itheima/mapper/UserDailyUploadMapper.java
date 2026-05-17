@@ -18,16 +18,12 @@ public interface UserDailyUploadMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(UserDailyUpload userDailyUpload);
 
-    @Update("UPDATE user_daily_upload SET upload_count = #{uploadCount}, update_time = #{updateTime} " +
-            "WHERE id = #{id}")
-    int updateById(UserDailyUpload userDailyUpload);
-
     @Update("UPDATE user_daily_upload SET upload_count = upload_count + #{increment} " +
             "WHERE user_id = #{userId} AND upload_date = #{uploadDate}")
     int incrementCount(@Param("userId") Integer userId,
                        @Param("uploadDate") LocalDate uploadDate,
                        @Param("increment") Integer increment);
 
-    @Delete("DELETE FROM user_daily_upload WHERE upload_date < #{date}")
+    @Delete("DELETE FROM user_daily_upload WHERE #{date} > upload_date ")
     int deleteByDateBefore(@Param("date") LocalDate date);
 }

@@ -22,7 +22,7 @@ public class SocialCacheService {
     public void cacheFriends(Integer userId, List<FriendRelationDTO> friends) {
         String key = String.format(RedisConstants.USER_FRIENDS_KEY, userId);
         try {
-            redisUtil.set(key, friends, RedisConstants.USER_CACHE_TTL, TimeUnit.MINUTES);
+            redisUtil.set(key, friends, RedisConstants.SOCIAL_LIST_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存好友列表失败 userId:{}", userId, e);
         }
@@ -51,7 +51,7 @@ public class SocialCacheService {
     public void cacheFollowing(Integer userId, List<FollowRelationDTO> following) {
         String key = String.format(RedisConstants.USER_FOLLOWING_KEY, userId);
         try {
-            redisUtil.set(key, following, RedisConstants.USER_CACHE_TTL, TimeUnit.MINUTES);
+            redisUtil.set(key, following, RedisConstants.SOCIAL_LIST_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存关注列表失败 userId:{}", userId, e);
         }
@@ -80,7 +80,7 @@ public class SocialCacheService {
 public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
         String key = String.format(RedisConstants.USER_FOLLOWERS_KEY, userId);
         try {
-            redisUtil.set(key, followers, RedisConstants.USER_CACHE_TTL, TimeUnit.MINUTES);
+            redisUtil.set(key, followers, RedisConstants.SOCIAL_LIST_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存粉丝列表失败 userId:{}", userId, e);
         }
@@ -109,7 +109,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     public void cacheFriendApplies(Integer userId, List<FriendApplyDTO> applies) {
         String key = String.format(RedisConstants.USER_FRIEND_APPLIES_KEY, userId);
         try {
-            redisUtil.set(key, applies, RedisConstants.USER_CACHE_TTL, TimeUnit.MINUTES);
+            redisUtil.set(key, applies, RedisConstants.FRIEND_APPLY_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存好友申请失败 userId:{}", userId, e);
         }
@@ -158,7 +158,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     public void cacheUnreadCount(Integer userId, Integer friendId, Integer count) {
         String key = String.format(RedisConstants.CHAT_UNREAD_COUNT_KEY, userId, friendId);
         try {
-            redisUtil.set(key, count, 1, TimeUnit.HOURS);
+            redisUtil.set(key, count, RedisConstants.UNREAD_COUNT_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存未读消息数失败 userId:{}, friendId:{}", userId, friendId, e);
         }
@@ -239,7 +239,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     public void cacheMessageStatus(String messageId, MessageStatus status) {
         String key = String.format(RedisConstants.MESSAGE_STATUS_KEY, messageId);
         try {
-            redisUtil.set(key, status.name(), 7, TimeUnit.DAYS);
+            redisUtil.set(key, status.name(), RedisConstants.MESSAGE_CACHE_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存消息状态失败 messageId:{}", messageId, e);
         }
@@ -271,9 +271,9 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
 
     // ==================== 最近聊天缓存 ====================
     public void cacheRecentChats(Integer userId, List<RecentChatDTO> recentChats) {
-        String key = String.format("social:recent_chats:user:%d", userId);
+        String key = String.format(RedisConstants.USER_RECENT_CHATS_KEY, userId);
         try {
-            redisUtil.set(key, recentChats, 5, TimeUnit.MINUTES); // 最近聊天缓存5分钟
+            redisUtil.set(key, recentChats, RedisConstants.RECENT_CHATS_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存最近聊天失败 userId:{}", userId, e);
         }
@@ -281,7 +281,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
 
     @SuppressWarnings("unchecked")
     public List<RecentChatDTO> getCachedRecentChats(Integer userId) {
-        String key = String.format("social:recent_chats:user:%d", userId);
+        String key = String.format(RedisConstants.USER_RECENT_CHATS_KEY, userId);
         try {
             Object cached = redisUtil.get(key);
             if (cached instanceof List) {
@@ -294,15 +294,15 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     }
 
     public void evictRecentChatsCache(Integer userId) {
-        String key = String.format("social:recent_chats:user:%d", userId);
+        String key = String.format(RedisConstants.USER_RECENT_CHATS_KEY, userId);
         redisUtil.delete(key);
     }
 
     // ==================== 聊天历史缓存 ====================
     public void cacheChatHistory(Integer userId, Integer relatedUserId, List<ChatMessageDTO> messages) {
-        String key = String.format("social:chat_history:%d:%d", userId, relatedUserId);
+        String key = String.format(RedisConstants.USER_CHAT_HISTORY_KEY, userId, relatedUserId);
         try {
-            redisUtil.set(key, messages, 10, TimeUnit.MINUTES); // 聊天历史缓存10分钟
+            redisUtil.set(key, messages, RedisConstants.CHAT_HISTORY_TTL, TimeUnit.MINUTES);
         } catch (Exception e) {
             log.error("缓存聊天历史失败 userId:{}, relatedUserId:{}", userId, relatedUserId, e);
         }
@@ -310,7 +310,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
 
     @SuppressWarnings("unchecked")
     public List<ChatMessageDTO> getCachedChatHistory(Integer userId, Integer relatedUserId) {
-        String key = String.format("social:chat_history:%d:%d", userId, relatedUserId);
+        String key = String.format(RedisConstants.USER_CHAT_HISTORY_KEY, userId, relatedUserId);
         try {
             Object cached = redisUtil.get(key);
             if (cached instanceof List) {
@@ -323,7 +323,7 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     }
 
     public void evictChatHistoryCache(Integer userId, Integer relatedUserId) {
-        String key = String.format("social:chat_history:%d:%d", userId, relatedUserId);
+        String key = String.format(RedisConstants.USER_CHAT_HISTORY_KEY, userId, relatedUserId);
         redisUtil.delete(key);
     }
 
@@ -331,5 +331,6 @@ public void cacheFollowers(Integer userId, List<FollowRelationDTO> followers) {
     public void evictAllChatMessagesCache(Integer userId, Integer relatedUserId) {
         evictRecentChatsCache(userId);
         evictChatHistoryCache(userId,relatedUserId);
+
     }
 }
